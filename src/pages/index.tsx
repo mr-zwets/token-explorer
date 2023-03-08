@@ -58,7 +58,7 @@ export default function Home() {
       </Head>
       <main className={styles.main}>
         <div style={{display:"block"}}>
-          <div  className={styles.description}>Enter tokenId: </div>
+          <h2  className={styles.description}>Enter tokenId: </h2>
           <input
             className={styles.description}
             style={{width:"550px",padding:"10px 20px"}}
@@ -71,11 +71,25 @@ export default function Home() {
             }}
           ></input>
 
-          {tokenInfo && <div style={{marginTop:"50px"}}>
+          {tokenInfo && <div style={{marginTop:"20px"}}>
             <p className={styles.description}>
-          genesisSupplyFT: {tokenInfo.genesisSupplyFT} <br/><br/>
-          totalAmountNFTs: {tokenInfo.totalSupplyNFTs} <br/><br/>
-          hasActiveMintingToken: {tokenInfo.hasActiveMintingToken? "yes":"no"}</p>
+              token type: 
+              {(tokenInfo.genesisSupplyFT && !tokenInfo.totalSupplyNFTs)? " Fungible Tokens only":null} 
+              {(!tokenInfo.genesisSupplyFT && tokenInfo.totalSupplyNFTs)? " NFTs only":null}
+              {(tokenInfo.genesisSupplyFT && tokenInfo.totalSupplyNFTs)? " Both Fugible & Non-Fungible tokens":null} 
+              <br/><br/>
+              {tokenInfo.genesisSupplyFT? (
+                <>
+                genesisSupplyFT: {tokenInfo.genesisSupplyFT} <br/><br/>
+                </>
+              ):null}
+              {tokenInfo.totalSupplyNFTs? (
+                <>
+                totalAmountNFTs: {tokenInfo.totalSupplyNFTs} <br/><br/>
+                hasActiveMintingToken: {tokenInfo.hasActiveMintingToken? "yes":"no"}
+                </>
+              ):null}        
+            </p>
         </div>}
         </div>
         
