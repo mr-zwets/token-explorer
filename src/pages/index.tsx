@@ -22,24 +22,30 @@ export default function Home() {
   };
 
   const lookUpTokenData = async () => {
-    // get genesisSupplyFT
-    const respJsonTotalSupply =  await queryTotalSupplyFT(tokenId);
-    let genesisSupplyFT = 0;
-    if(respJsonTotalSupply.data.transaction[0].outputs){
-      genesisSupplyFT = respJsonTotalSupply.data.transaction[0].outputs.reduce(
-        (total:number, output:{fungible_token_amount:string}) => 
-          total + parseInt(output.fungible_token_amount),
-        0
-      );
-    }
-    // get totalSupplyNFTs
-    const respJsonSupplyNFTs = await querySupplyNFTs(tokenId);
-    const totalSupplyNFTs = respJsonSupplyNFTs.data.output.length;
-    // get hasActiveMintingToken
-    const respJsonActiveMinting = await queryActiveMinting(tokenId);
-    const hasActiveMintingToken = Boolean(respJsonActiveMinting.data.output.length)
+    try{
+      // get genesisSupplyFT
+      const respJsonTotalSupply =  await queryTotalSupplyFT(tokenId);
+      let genesisSupplyFT = 0;
+      if(respJsonTotalSupply.data.transaction[0].outputs){
+        genesisSupplyFT = respJsonTotalSupply.data.transaction[0].outputs.reduce(
+          (total:number, output:{fungible_token_amount:string}) => 
+            total + parseInt(output.fungible_token_amount),
+          0
+        );
+      }
+      // get totalSupplyNFTs
+      const respJsonSupplyNFTs = await querySupplyNFTs(tokenId);
+      const totalSupplyNFTs = respJsonSupplyNFTs.data.output.length;
+      // get hasActiveMintingToken
+      const respJsonActiveMinting = await queryActiveMinting(tokenId);
+      const hasActiveMintingToken = Boolean(respJsonActiveMinting.data.output.length);
 
-    setTokenInfo({genesisSupplyFT,totalSupplyNFTs,hasActiveMintingToken})
+      setTokenInfo({genesisSupplyFT,totalSupplyNFTs,hasActiveMintingToken});
+    } catch(error){
+      console.log(error);
+      alert("The input is not a valid tokenId!")
+      setTokenInfo(undefined);
+    }
   }
 
   return (
@@ -65,10 +71,11 @@ export default function Home() {
             }}
           ></input>
 
-          {tokenInfo && <div className={styles.center}>
-          genesisSupplyFT : {tokenInfo.genesisSupplyFT} <br/>
-          totalAmountNFTs : {tokenInfo.totalSupplyNFTs} <br/>
-          hasActiveMintingToken : {tokenInfo.hasActiveMintingToken? "yes":"no"}
+          {tokenInfo && <div style={{marginTop:"50px"}}>
+            <p className={styles.description}>
+          genesisSupplyFT: {tokenInfo.genesisSupplyFT} <br/><br/>
+          totalAmountNFTs: {tokenInfo.totalSupplyNFTs} <br/><br/>
+          hasActiveMintingToken: {tokenInfo.hasActiveMintingToken? "yes":"no"}</p>
         </div>}
         </div>
         
