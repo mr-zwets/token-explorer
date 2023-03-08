@@ -1,24 +1,47 @@
 import Head from 'next/head'
-import Image from 'next/image'
 import { Inter } from '@next/font/google'
 import styles from '@/styles/Home.module.css'
-import { ImageI, Wallet } from 'mainnet-js'
+import { Wallet } from 'mainnet-js'
 import { useEffect, useState } from 'react'
+import { queryTotalSupplyFT, queryActiveMinting, querySupplyNFTs } from '../utils/queryChainGraph';
 
 const inter = Inter({ subsets: ['latin'] })
 
 export default function Home() {
-  const [wallet, setWallet] = useState<Wallet>();
-  const [image, setImage] = useState<ImageI>();
-  useEffect(() => {
-    const createWallet = async () => {
-      const wallet = await Wallet.newRandom();
-      setWallet(wallet);
-      setImage(wallet.getDepositQr());
-    }
+  interface tokenInfo {
+    genesisSupplyFT:number;
+    totalSupplyNFTs:number;
+    hasActiveMintingToken:boolean;
+  }
 
-    createWallet();
-  }, [])
+  const [tokenId, setTokenId] = useState<string>("");
+  const [tokenInfo, setTokenInfo] = useState<tokenInfo>();
+
+  const handleChange = (e:any) => {
+    if((e.target as HTMLInputElement)) setTokenId(e.target.value);
+  };
+
+  const lookUpTokenData = async () => {
+    // get genesisSupplyFT
+    const respJsonTotalSupply =  await queryTotalSupplyFT(tokenId);
+    let genesisSupplyFT = 0;
+    if(respJsonTotalSupply.data.transaction[0].outputs){
+      genesisSupplyFT = respJsonTotalSupply.data.transaction[0].outputs.reduce(
+        (total:number, output:{fungible_token_amount:string}) => 
+          total + parseInt(output.fungible_token_amount),
+        0
+      );
+    }
+    // get totalSupplyNFTs
+    const respJsonSupplyNFTs = await querySupplyNFTs(tokenId);
+    const totalSupplyNFTs = respJsonSupplyNFTs.data.output.length;
+    // get hasActiveMintingToken
+    const respJsonActiveMinting = await queryActiveMinting(tokenId);
+    const hasActiveMintingToken = Boolean(respJsonActiveMinting.data.output.length)
+
+    setTokenInfo({genesisSupplyFT,totalSupplyNFTs,hasActiveMintingToken})
+  }
+
   return (
     <>
       <Head>
@@ -28,25 +51,27 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <main className={styles.main}>
-        <div className={styles.center}>
-          {image && <Image
-            src={image.src}
-            alt={image.alt}
-            title={image.title}
-            className={styles.vercelLogo}
-            width={256}
-            height={256}
-            priority
-          />}
-        </div>
-        {wallet && <div className={styles.center}>
-          <div className={styles.description}>
-            <p>
-              Wallet address: &nbsp;
-              <code>{wallet?.cashaddr}</code>
-            </p>
-          </div>
+        <div style={{display:"block"}}>
+          <div  className={styles.description}>Enter tokenId: </div>
+          <input
+            className={styles.description}
+            style={{width:"550px",padding:"10px 20px"}}
+            type="text"
+            id="tokenId"
+            value={tokenId}
+            onChange={(e) => handleChange(e)}
+            onKeyDown ={(e) => {
+              if(e.key === 'Enter') lookUpTokenData();
+            }}
+          ></input>
+
+          {tokenInfo && <div className={styles.center}>
+          genesisSupplyFT : {tokenInfo.genesisSupplyFT} <br/>
+          totalAmountNFTs : {tokenInfo.totalSupplyNFTs} <br/>
+          hasActiveMintingToken : {tokenInfo.hasActiveMintingToken? "yes":"no"}
         </div>}
+        </div>
+        
       </main>
     </>
   )
