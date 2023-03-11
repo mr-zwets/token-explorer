@@ -1632,10 +1632,10 @@
   dependencies:
     "yallist" "^4.0.0"
 
-"mainnet-js@1.0.10":
-  "integrity" "sha512-qe218tI349n4weKRVRiy0o9JdBe4lHyHXC3AGt33oAGike+u/7ThRFqovtUoGelX8PYAXo+PN3p5vRrqVwym+Q=="
-  "resolved" "https://registry.npmjs.org/mainnet-js/-/mainnet-js-1.0.10.tgz"
-  "version" "1.0.10"
+"mainnet-js@^1.0.15":
+  "integrity" "sha512-kjGeEGoUJb3044Cz6aeRwJXqlvsxKJcRmo8s8vxsjJTvjwqW5swLhll7dLLzd2B1zB0Lz2CdF4ysCe+mS875uQ=="
+  "resolved" "https://registry.npmjs.org/mainnet-js/-/mainnet-js-1.0.15.tgz"
+  "version" "1.0.15"
   dependencies:
     "@bitauth/libauth" "=v2.0.0-alpha.7"
     "async-mutex" "^0.3.1"

@@ -21,7 +21,7 @@ async function queryChainGraph(queryReq:string){
     return await response.json();
 }
 
-export async function queryTotalSupplyFT(tokenId:string){
+export async function queryTotalSupplyFtFromGenesis(tokenId:string){
     const queryReqTotalSupply = `query {
         transaction(
           where: {
@@ -34,6 +34,7 @@ export async function queryTotalSupplyFT(tokenId:string){
             }
           }
         ) {
+          hash,
           outputs(where: { token_category: { _eq: "\\\\x${tokenId}" } }) {
             fungible_token_amount
           }
