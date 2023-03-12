@@ -33,6 +33,7 @@ export default function Home() {
   };
 
   useEffect(() => {
+    if(!tokenInfo) return
     if(tokenInfo?.hasMetaData !== undefined) return
     async function fetchMetadata(){
       let metadataInfo:tokenMetadata | undefined;
@@ -103,11 +104,11 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <main className={styles.main}>
-        <div style={{display:"block"}}>
+        <div style={{display:"block"}}>      
           <h2  className={styles.description}>Enter tokenId: </h2>
           <input
-            className={styles.description}
-            style={{width:"570px",padding:"10px 20px"}}
+             className={styles.description}
+             style={{width:"80vw", maxWidth:"570px",padding:"10px 20px"}}
             type="text"
             id="tokenId"
             value={tokenId}
@@ -117,7 +118,7 @@ export default function Home() {
             }}
           ></input>
 
-          {tokenInfo && <div style={{marginTop:"20px"}}>
+          {tokenInfo && <div style={{marginTop:"20px", overflowWrap:"anywhere"}}>
             <p className={styles.description}>
               token type: 
               {(tokenInfo.genesisSupplyFT && !tokenInfo.totalSupplyNFTs)? " Fungible Tokens only":null} 

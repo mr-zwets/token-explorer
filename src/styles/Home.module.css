@@ -18,6 +18,11 @@
   font-family: var(--font-mono);
 }
 
+.input {
+  font-family: var(--font-mono);
+  padding: 10px 20px;
+}
+
 .description a {
   display: flex;
   justify-content: center;
@@ -265,6 +270,12 @@
   .logo,
   .thirteen img {
     filter: invert(1) drop-shadow(0 0 0.3rem #ffffff70);
+  }
+}
+
+@media only screen and (max-width: 800px) {
+  .input {
+    width: 100vw;
   }
 }
 
