@@ -1,7 +1,7 @@
 import Head from 'next/head'
 import { Inter } from '@next/font/google'
 import styles from '@/styles/Home.module.css'
-import { TestNetWallet, BCMR, Network, DefaultProvider } from 'mainnet-js'
+import { BCMR, Network, initProviders } from 'mainnet-js'
 import { useEffect, useState } from 'react'
 import { queryTotalSupplyFtFromGenesis, queryActiveMinting, querySupplyNFTs } from '../utils/queryChainGraph';
 
@@ -39,9 +39,7 @@ export default function Home() {
       let metadataInfo:tokenMetadata | undefined;
       let hasMetaData=false;
       try{
-        DefaultProvider.servers.testnet = ["wss://chipnet.imaginary.cash:50004"]
-        // Necessary to instantiate wallet to use addMetadataRegistryAuthChain
-        const wallet = await TestNetWallet.watchOnly("bchtest:qrnnmmhltrt58vaxgemepdy5kqz36x9tqythdhar4a")
+        await initProviders(["testnet"]);
         const authChain = await BCMR.addMetadataRegistryAuthChain({
           transactionHash: tokenId,
           followToHead: true,
