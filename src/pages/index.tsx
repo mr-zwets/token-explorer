@@ -40,7 +40,7 @@ export default function Home() {
       try{
         DefaultProvider.servers.testnet = ["wss://chipnet.imaginary.cash:50004"]
         // Necessary to instantiate wallet to use addMetadataRegistryAuthChain
-        const wallet = await TestNetWallet.named("mywallet");
+        const wallet = await TestNetWallet.watchOnly("bchtest:qrnnmmhltrt58vaxgemepdy5kqz36x9tqythdhar4a")
         const authChain = await BCMR.addMetadataRegistryAuthChain({
           transactionHash: tokenId,
           followToHead: true,
