@@ -40,16 +40,20 @@ export default function Home() {
       let hasMetaData=false;
       try{
         await initProviders(["testnet"]);
-        const authChain = await BCMR.addMetadataRegistryAuthChain({
+        const authChain = await BCMR.buildAuthChain({
           transactionHash: tokenId,
           followToHead: true,
           network: Network.TESTNET
         });
-        if(authChain){
-          console.log("Importing an on-chain resolved BCMR!");
-          await BCMR.addMetadataRegistryFromUri(authChain[0].uri);
-          metadataInfo = BCMR.getTokenInfo(tokenId);
-          hasMetaData = true;
+        if(authChain[0]){
+          try{
+            const reponse = await fetch(authChain[0].uri);
+            const json = await reponse.json();
+            await BCMR.addMetadataRegistryFromUri(authChain[0].uri);
+            metadataInfo = BCMR.getTokenInfo(tokenId);
+            hasMetaData = true;
+            console.log("Importing an on-chain resolved BCMR!");
+          }catch(e){ console.log(e) }
         }
       } catch(error){ console.log(error) }
 
