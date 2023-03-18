@@ -123,7 +123,7 @@ export default function Home() {
           ></input>
 
           {tokenInfo && <div style={{marginTop:"20px", overflowWrap:"anywhere"}}>
-            <p className={styles.description}>
+            <div className={styles.description}>
               token type: 
               {(tokenInfo.genesisSupplyFT && !tokenInfo.totalSupplyNFTs)? " Fungible Tokens only":null} 
               {(!tokenInfo.genesisSupplyFT && tokenInfo.totalSupplyNFTs)? " NFTs only":null}
@@ -145,7 +145,7 @@ export default function Home() {
               </a>
               <br/><br/><br/>
               {tokenInfo.metaDataLocation !== undefined? (
-                tokenInfo.metaDataLocation === ""?
+                tokenInfo.metaDataLocation !== ""?
                 (<>
                   This token has metadata linked on-chain. <br/><br/>
                 </>):
@@ -158,11 +158,15 @@ export default function Home() {
                 name: {tokenInfo.tokenMetadata.name} <br/><br/>
                 description: {tokenInfo.tokenMetadata.description} <br/><br/>
                 decimals: {tokenInfo.tokenMetadata.token?.decimals} <br/><br/>
+                {tokenInfo.tokenMetadata.uris?.icon ? <>
+                    <span style={{verticalAlign:"top"}}>icon: </span>
+                    <img style={{maxWidth: "80vw"}} src={tokenInfo.tokenMetadata.uris?.icon}/> <br/><br/>
+                  </>:null}
                 location metadata: 
                 <a href={tokenInfo.metaDataLocation} target="_blank" rel="noreferrer" style={{maxWidth: "570px", wordBreak: "break-all"}}>{tokenInfo.metaDataLocation}</a> <br/>
                 </>
-              ):null}        
-            </p>
+              ):null} <br/>
+            </div>
         </div>}
         </div>
         
