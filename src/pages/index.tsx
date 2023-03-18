@@ -13,7 +13,7 @@ export default function Home() {
     totalSupplyNFTs:number;
     hasActiveMintingToken:boolean;
     genesisTx: string,
-    hasMetaData?:boolean;
+    metaDataLocation?:string;
     tokenMetadata?: tokenMetadata | undefined
   }
 
@@ -23,6 +23,10 @@ export default function Home() {
     token?: {
       decimals?:number
     },
+    uris?: URIs
+  }
+  interface URIs {
+    icon?: string
   }
 
   const [tokenId, setTokenId] = useState<string>("");
@@ -34,10 +38,10 @@ export default function Home() {
 
   useEffect(() => {
     if(!tokenInfo) return
-    if(tokenInfo?.hasMetaData !== undefined) return
+    if(tokenInfo?.metaDataLocation !== undefined) return
     async function fetchMetadata(){
       let metadataInfo:tokenMetadata | undefined;
-      let hasMetaData=false;
+      let metaDataLocation= "";
       try{
         await initProviders(["testnet"]);
         const authChain = await BCMR.buildAuthChain({
@@ -51,14 +55,14 @@ export default function Home() {
             const json = await reponse.json();
             await BCMR.addMetadataRegistryFromUri(authChain[0].uri);
             metadataInfo = BCMR.getTokenInfo(tokenId);
-            hasMetaData = true;
+            metaDataLocation = authChain[0].uri;
             console.log("Importing an on-chain resolved BCMR!");
           }catch(e){ console.log(e) }
         }
       } catch(error){ console.log(error) }
 
       if(!tokenInfo) return
-      const newTokenInfo:tokenInfo = {...tokenInfo, hasMetaData, tokenMetadata:metadataInfo}
+      const newTokenInfo:tokenInfo = {...tokenInfo, metaDataLocation, tokenMetadata:metadataInfo}
 
       setTokenInfo(newTokenInfo);
     }
@@ -86,8 +90,6 @@ export default function Home() {
       // get hasActiveMintingToken
       const respJsonActiveMinting = await queryActiveMinting(tokenId);
       const hasActiveMintingToken = Boolean(respJsonActiveMinting.data.output.length);
-
-      let tokenMetadata
 
       setTokenInfo({genesisSupplyFT,totalSupplyNFTs,hasActiveMintingToken, genesisTx});
     } catch(error){
@@ -142,8 +144,8 @@ export default function Home() {
                 {tokenInfo.genesisTx}
               </a>
               <br/><br/><br/>
-              {tokenInfo.hasMetaData !== undefined? (
-                tokenInfo.hasMetaData === true?
+              {tokenInfo.metaDataLocation !== undefined? (
+                tokenInfo.metaDataLocation === ""?
                 (<>
                   This token has metadata linked on-chain. <br/><br/>
                 </>):
@@ -156,6 +158,8 @@ export default function Home() {
                 name: {tokenInfo.tokenMetadata.name} <br/><br/>
                 description: {tokenInfo.tokenMetadata.description} <br/><br/>
                 decimals: {tokenInfo.tokenMetadata.token?.decimals} <br/><br/>
+                location metadata: 
+                <a href={tokenInfo.metaDataLocation} target="_blank" rel="noreferrer" style={{maxWidth: "570px", wordBreak: "break-all"}}>{tokenInfo.metaDataLocation}</a> <br/>
                 </>
               ):null}        
             </p>
