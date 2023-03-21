@@ -1,7 +1,7 @@
 import Head from 'next/head'
 import { Inter } from '@next/font/google'
 import styles from '@/styles/Home.module.css'
-import { BCMR, Network, initProviders } from 'mainnet-js'
+import { BCMR, Network } from 'mainnet-js'
 import { useEffect, useState } from 'react'
 import { queryTotalSupplyFtFromGenesis, queryActiveMinting, querySupplyNFTs } from '../utils/queryChainGraph';
 
@@ -43,7 +43,6 @@ export default function Home() {
       let metadataInfo:tokenMetadata | undefined;
       let metaDataLocation= "";
       try{
-        await initProviders(["testnet"]);
         const authChain = await BCMR.buildAuthChain({
           transactionHash: tokenId,
           followToHead: true,
