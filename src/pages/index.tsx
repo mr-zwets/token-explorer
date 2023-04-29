@@ -159,7 +159,11 @@ export default function Home() {
                 decimals: {tokenInfo.tokenMetadata.token?.decimals} <br/><br/>
                 {tokenInfo.tokenMetadata.uris?.icon ? <>
                     <span style={{verticalAlign:"top"}}>icon: </span>
-                    <img style={{maxWidth: "80vw"}} src={tokenInfo.tokenMetadata.uris?.icon}/> <br/><br/>
+                    <img style={{maxWidth: "80vw"}} 
+                      src={tokenInfo.tokenMetadata.uris?.icon.startsWith("ipfs://") ? 
+                      "https://dweb.link/ipfs/"+tokenInfo.tokenMetadata.uris?.icon.slice(7) : 
+                      tokenInfo.tokenMetadata.uris?.icon}
+                    /> <br/><br/>
                   </>:null}
                 location metadata: 
                 <a href={tokenInfo.metaDataLocation} target="_blank" rel="noreferrer" style={{maxWidth: "570px", wordBreak: "break-all"}}>{tokenInfo.metaDataLocation}</a> <br/>
