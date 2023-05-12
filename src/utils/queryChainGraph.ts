@@ -59,19 +59,20 @@ export async function queryActiveMinting(tokenId:string){
 }
 
 export async function querySupplyNFTs(tokenId:string){
-    const queryReqTotalSupply = `query {
-        output(
-          where: {
-            token_category: {
-              _eq: "\\\\x${tokenId}"
-            }
-            _and: [
-              { nonfungible_token_capability: { _eq: "none" } }
-            ]
+  const queryReqTotalSupply = `query {
+      output(
+        where: {
+          token_category: {
+            _eq: "\\\\x${tokenId}"
           }
-        ) {
-          locking_bytecode
+          _and: [
+            { nonfungible_token_capability: { _eq: "none" } }
+          ]
+          _not: { spent_by: {} }
         }
-    }`;
-    return await queryChainGraph(queryReqTotalSupply);
+      ) {
+        locking_bytecode
+      }
+  }`;
+  return await queryChainGraph(queryReqTotalSupply);
 }
