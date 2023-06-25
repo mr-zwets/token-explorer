@@ -1722,10 +1722,10 @@ lru-cache@^6.0.0:
   dependencies:
     yallist "^4.0.0"
 
-mainnet-js@^1.1.8:
-  version "1.1.8"
-  resolved "https://registry.npmjs.org/mainnet-js/-/mainnet-js-1.1.8.tgz"
-  integrity sha512-vz/RAq+tOO0a87740lT1awARicQM1ONKGzE41x/+cy/t650qrTi9IFFFQMAcD1sd5D7fAQfjg7aL41Pi58wK+A==
+mainnet-js@^1.1.30:
+  version "1.1.30"
+  resolved "https://registry.yarnpkg.com/mainnet-js/-/mainnet-js-1.1.30.tgz#1018be8961b8070724118f49f24df837239ac327"
+  integrity sha512-KukvKKWqy4Iq4jv8ZSs0THWEVXiKRTQeGCmmLS4Q4GsQ4aeD9vOdpzmVIobd/m+gBu/YLjRs3ObLAlOiuf28uA==
   dependencies:
     "@bitauth/libauth" "^2.0.0-alpha.8"
     async-mutex "^0.3.1"

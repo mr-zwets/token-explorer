@@ -1,9 +1,9 @@
 import Head from 'next/head'
 import { Inter } from '@next/font/google'
 import styles from '@/styles/Home.module.css'
-import { BCMR, Network } from 'mainnet-js'
+import { BCMR } from 'mainnet-js'
 import { useEffect, useState } from 'react'
-import { queryTotalSupplyFtFromGenesis, queryActiveMinting, querySupplyNFTs } from '../utils/queryChainGraph';
+import { queryTotalSupplyFT, queryActiveMinting, querySupplyNFTs } from '../utils/queryChainGraph';
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -14,7 +14,9 @@ export default function Home() {
     hasActiveMintingToken:boolean;
     genesisTx: string,
     metaDataLocation?:string;
+    httpsUrl?:string;
     tokenMetadata?: tokenMetadata | undefined
+    autchainLength?: number
   }
 
   interface tokenMetadata {
@@ -36,45 +38,53 @@ export default function Home() {
     if((e.target as HTMLInputElement)) setTokenId(e.target.value);
   };
 
+  const chaingraphUrl = "https://gql.chaingraph.pat.mn/v1/graphql";
+  const ipfsGateway = "https://ipfs.io/ipfs/";
+
   useEffect(() => {
     if(!tokenInfo) return
     if(tokenInfo?.metaDataLocation !== undefined) return
-    async function fetchMetadata(){
-      let metadataInfo:tokenMetadata | undefined;
-      let metaDataLocation= "";
-      try{
-        const authChain = await BCMR.buildAuthChain({
-          transactionHash: tokenId,
-          followToHead: true,
-          network: Network.TESTNET
-        });
-        if(authChain[0]){
-          try{
-            const reponse = await fetch(authChain[0].uri);
-            const json = await reponse.json();
-            await BCMR.addMetadataRegistryFromUri(authChain[0].uri);
-            metadataInfo = BCMR.getTokenInfo(tokenId);
-            metaDataLocation = authChain[0].uri;
-            console.log("Importing an on-chain resolved BCMR!");
-          }catch(e){ console.log(e) }
-        }
-      } catch(error){ console.log(error) }
-
-      if(!tokenInfo) return
-      const newTokenInfo:tokenInfo = {...tokenInfo, metaDataLocation, tokenMetadata:metadataInfo}
-
-      setTokenInfo(newTokenInfo);
-    }
-    
     fetchMetadata();
-
   },[tokenInfo]);
+
+  async function fetchMetadata(){
+    let metadataInfo:tokenMetadata | undefined;
+    let metaDataLocation= "";
+    let httpsUrl= "";
+    let autchainLength= 0;
+    try{
+      const authChain = await BCMR.fetchAuthChainFromChaingraph({
+        chaingraphUrl: chaingraphUrl,
+        transactionHash: tokenId,
+        network: "mainnet"
+      });
+      if(authChain.at(-1)){
+        try{
+          autchainLength = authChain.length;
+          const bcmrLocation = authChain.at(-1)?.uris[0];
+          if(!bcmrLocation) return;
+          httpsUrl = bcmrLocation;
+          if(httpsUrl.startsWith("ipfs://")) httpsUrl = httpsUrl.replace("ipfs://", ipfsGateway);
+          if(!httpsUrl.startsWith("http")) httpsUrl = `https://${bcmrLocation}`;
+          await BCMR.addMetadataRegistryFromUri(httpsUrl);
+          metadataInfo = BCMR.getTokenInfo(tokenId);
+          metaDataLocation = authChain[0].uris[0];
+          console.log("Importing an on-chain resolved BCMR!");
+        }catch(e){ console.log(e) }
+      }
+    } catch(error){ console.log(error) }
+
+    if(!tokenInfo) return
+    const newTokenInfo:tokenInfo = {...tokenInfo, metaDataLocation, tokenMetadata:metadataInfo, httpsUrl, autchainLength}
+
+    setTokenInfo(newTokenInfo);
+  }
 
   const lookUpTokenData = async () => {
     try{
       // get genesisSupplyFT
-      const respJsonTotalSupply =  await queryTotalSupplyFtFromGenesis(tokenId);
-      const genesisTx = respJsonTotalSupply.data.transaction[0].hash.substring(2);
+      const respJsonTotalSupply =  await queryTotalSupplyFT(tokenId,chaingraphUrl);
+      const genesisTx = respJsonTotalSupply?.data?.transaction[0]?.hash?.substring(2);
       let genesisSupplyFT = 0;
       if(respJsonTotalSupply.data.transaction[0].outputs){
         genesisSupplyFT = respJsonTotalSupply.data.transaction[0].outputs.reduce(
@@ -84,10 +94,17 @@ export default function Home() {
         );
       }
       // get totalSupplyNFTs
-      const respJsonSupplyNFTs = await querySupplyNFTs(tokenId);
-      const totalSupplyNFTs = respJsonSupplyNFTs.data.output.length;
+      let respJsonSupplyNFTs = await querySupplyNFTs(tokenId, chaingraphUrl);
+      let totalSupplyNFTs = respJsonSupplyNFTs.data.output.length;
+      let indexOffset = 0;
+      // limit of items returned by chaingraphquery is 5000
+      while (respJsonSupplyNFTs.data.output.length == 5000) {
+        indexOffset += 1;
+        respJsonSupplyNFTs = await querySupplyNFTs(tokenId, chaingraphUrl, 5000 * indexOffset);
+        totalSupplyNFTs += respJsonSupplyNFTs.data.output.length;
+      }
       // get hasActiveMintingToken
-      const respJsonActiveMinting = await queryActiveMinting(tokenId);
+      const respJsonActiveMinting = await queryActiveMinting(tokenId,chaingraphUrl);
       const hasActiveMintingToken = Boolean(respJsonActiveMinting.data.output.length);
 
       setTokenInfo({genesisSupplyFT,totalSupplyNFTs,hasActiveMintingToken, genesisTx});
@@ -107,6 +124,7 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <main className={styles.main}>
+        <h1 className={styles.title}>BCMR Token Explorer</h1>
         <div style={{display:"block"}}>      
           <h2  className={styles.description}>Enter tokenId: </h2>
           <input
@@ -121,7 +139,7 @@ export default function Home() {
             }}
           ></input>
 
-          {tokenInfo && <div style={{marginTop:"20px", overflowWrap:"anywhere"}}>
+          {tokenInfo && <div style={{marginTop:"20px", overflowWrap:"anywhere",maxWidth:"570px"}}>
             <div className={styles.description}>
               token type: 
               {(tokenInfo.genesisSupplyFT && !tokenInfo.totalSupplyNFTs)? " Fungible Tokens only":null} 
@@ -156,7 +174,9 @@ export default function Home() {
                 <>
                 name: {tokenInfo.tokenMetadata.name} <br/><br/>
                 description: {tokenInfo.tokenMetadata.description} <br/><br/>
-                decimals: {tokenInfo.tokenMetadata.token?.decimals} <br/><br/>
+                {tokenInfo.tokenMetadata.token?.decimals? (<>
+                  <div>decimals: {tokenInfo.tokenMetadata.token?.decimals}</div><br/><br/>
+                </>): null}
                 {tokenInfo.tokenMetadata.uris?.icon ? <>
                     <span style={{verticalAlign:"top"}}>icon: </span>
                     <img style={{maxWidth: "80vw"}} 
@@ -166,9 +186,10 @@ export default function Home() {
                     /> <br/><br/>
                   </>:null}
                 location metadata: 
-                <a href={tokenInfo.metaDataLocation} target="_blank" rel="noreferrer" style={{maxWidth: "570px", wordBreak: "break-all"}}>{tokenInfo.metaDataLocation}</a> <br/>
+                <a href={tokenInfo.httpsUrl} target="_blank" rel="noreferrer" style={{maxWidth: "570px", wordBreak: "break-all"}}>{tokenInfo.metaDataLocation}</a> <br/>
                 </>
-              ):null} <br/>
+              ):null} <br/><br/>
+              authChain length: {tokenInfo.autchainLength} <br/>
             </div>
         </div>}
         </div>
