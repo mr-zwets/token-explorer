@@ -3,7 +3,7 @@ import { Inter } from '@next/font/google'
 import styles from '@/styles/Home.module.css'
 import { BCMR } from 'mainnet-js'
 import { useEffect, useState } from 'react'
-import { queryTotalSupplyFT, queryActiveMinting, querySupplyNFTs } from '../utils/queryChainGraph';
+import { queryTotalSupplyFT, queryActiveMinting, querySupplyNFTs, queryAuthchainLength } from '../utils/queryChainGraph';
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -16,7 +16,8 @@ export default function Home() {
     metaDataLocation?:string;
     httpsUrl?:string;
     tokenMetadata?: tokenMetadata | undefined
-    autchainLength?: number
+    authchainUpdates?: number
+    authchainLength?: number
   }
 
   interface tokenMetadata {
@@ -25,11 +26,11 @@ export default function Home() {
     token?: {
       decimals?:number
     },
-    uris?: URIs
+    uris: URIs
   }
-  interface URIs {
-    icon?: string
-  }
+  type URIs = {
+    [identifier: string]: string;
+  };
 
   const [tokenId, setTokenId] = useState<string>("");
   const [tokenInfo, setTokenInfo] = useState<tokenInfo>();
@@ -67,7 +68,7 @@ export default function Home() {
     let metadataInfo:tokenMetadata | undefined;
     let metaDataLocation= "";
     let httpsUrl= "";
-    let autchainLength= 0;
+    let authchainUpdates= 0;
     try{
       const authChain = await BCMR.fetchAuthChainFromChaingraph({
         chaingraphUrl: chaingraphUrl,
@@ -76,22 +77,23 @@ export default function Home() {
       });
       if(authChain.at(-1)){
         try{
-          autchainLength = authChain.length;
+          authchainUpdates = authChain.length;
           const bcmrLocation = authChain.at(-1)?.uris[0];
           if(!bcmrLocation) return;
           httpsUrl = bcmrLocation;
           if(httpsUrl.startsWith("ipfs://")) httpsUrl = httpsUrl.replace("ipfs://", ipfsGateway);
           if(!httpsUrl.startsWith("http")) httpsUrl = `https://${bcmrLocation}`;
           await BCMR.addMetadataRegistryFromUri(httpsUrl);
-          metadataInfo = BCMR.getTokenInfo(tokenId);
-          metaDataLocation = authChain[0].uris[0];
+          metadataInfo = BCMR.getTokenInfo(tokenId) as tokenMetadata;
+          metaDataLocation = bcmrLocation;
+          console.log(bcmrLocation);
           console.log("Importing an on-chain resolved BCMR!");
         }catch(e){ console.log(e) }
       }
     } catch(error){ console.log(error) }
 
     if(!tokenInfo) return
-    const newTokenInfo:tokenInfo = {...tokenInfo, metaDataLocation, tokenMetadata:metadataInfo, httpsUrl, autchainLength}
+    const newTokenInfo:tokenInfo = {...tokenInfo, metaDataLocation, tokenMetadata:metadataInfo, httpsUrl, authchainUpdates}
 
     setTokenInfo(newTokenInfo);
   }
@@ -122,8 +124,11 @@ export default function Home() {
       // get hasActiveMintingToken
       const respJsonActiveMinting = await queryActiveMinting(tokenId,chaingraphUrl);
       const hasActiveMintingToken = Boolean(respJsonActiveMinting.data.output.length);
+      // get autchainLength
+      const respJsonAuthchainLength = await queryAuthchainLength(tokenId,chaingraphUrl);
+      const authchainLength = respJsonAuthchainLength.data.transaction[0].authchains[0].authchain_length;
 
-      setTokenInfo({genesisSupplyFT,totalSupplyNFTs,hasActiveMintingToken, genesisTx});
+      setTokenInfo({genesisSupplyFT,totalSupplyNFTs,hasActiveMintingToken, genesisTx, authchainLength});
     } catch(error){
       console.log(error);
       alert("The input is not a valid tokenId!")
@@ -185,7 +190,11 @@ export default function Home() {
                 (<>
                   This token has no metadata linked on-chain. <br/><br/>
                   </>)
-              ):<> loading metadata...</>} 
+              ):<> loading metadata...</>}
+              {tokenInfo.authchainUpdates? <>
+                authChain length: {tokenInfo.authchainLength}  <br/>
+                authChain metadata updates: {tokenInfo.authchainUpdates}  <br/><br/>
+              </> : null}
               {tokenInfo.tokenMetadata? (
                 <>
                 name: {tokenInfo.tokenMetadata.name} <br/><br/>
@@ -194,18 +203,28 @@ export default function Home() {
                   <div>decimals: {tokenInfo.tokenMetadata.token?.decimals}</div><br/><br/>
                 </>): null}
                 {tokenInfo.tokenMetadata.uris?.icon ? <>
-                    <span style={{verticalAlign:"top"}}>icon: </span>
-                    <img style={{maxWidth: "80vw"}} 
-                      src={tokenInfo.tokenMetadata.uris?.icon.startsWith("ipfs://") ? 
-                      "https://dweb.link/ipfs/"+tokenInfo.tokenMetadata.uris?.icon.slice(7) : 
-                      tokenInfo.tokenMetadata.uris?.icon}
-                    /> <br/><br/>
+                    <span style={{ verticalAlign:"top"}}>icon: </span>
+                    <img style={{ maxWidth: "60vw"}}
+                      src={tokenInfo.tokenMetadata.uris?.icon.startsWith("ipfs://") ?
+                        "https://dweb.link/ipfs/" + tokenInfo.tokenMetadata.uris?.icon.slice(7) :
+                        tokenInfo.tokenMetadata.uris?.icon} />
+                    <br/><br/>
                   </>:null}
+                web url: {tokenInfo.tokenMetadata.uris?.web? <a href={tokenInfo.tokenMetadata.uris?.web} target='_blank' rel="noreferrer" style={{display: "inline-block", color: "#00E"}}>
+                  {tokenInfo.tokenMetadata.uris?.web}
+                </a>: "none"}
+                <br/><br/>
+                  other uris: {Object.keys(tokenInfo.tokenMetadata.uris).filter(uri => uri != "icon" && uri != "web").length ?
+                    Object.keys(tokenInfo.tokenMetadata.uris).filter(uri => uri != "icon" && uri != "web").map((uriKey, index, array) =>
+                      <>
+                        <a key={uriKey} href={tokenInfo?.tokenMetadata?.uris[uriKey]} target='_blank' rel="noreferrer" style={{ display: "inline-block", color: "#00E" }}>{uriKey}</a>
+                        {(index != array.length - 1) ? ", " : null}</>
+                    ) : "none"} <br /><br />
                 location metadata: 
-                <a href={tokenInfo.httpsUrl} target="_blank" rel="noreferrer" style={{maxWidth: "570px", wordBreak: "break-all"}}>{tokenInfo.metaDataLocation}</a> <br/>
-                </>
-              ):null} <br/>
-              authChain length: {tokenInfo.autchainLength} <br/>
+                <a href={tokenInfo.httpsUrl} target="_blank" rel="noreferrer" style={{maxWidth: "570px", wordBreak: "break-all", display: "inline-block", color: "#00E"}}>
+                  {tokenInfo.metaDataLocation}
+                </a><br/>
+              </>):null} <br/>
             </div>
         </div>}
         </div>

@@ -72,3 +72,21 @@ export async function querySupplyNFTs(tokenId:string, chaingraphUrl:string, offs
   }`;
   return await queryChainGraph(queryReqTotalSupply, chaingraphUrl);
 }
+
+export async function queryAuthchainLength(tokenId:string, chaingraphUrl:string){
+  const queryReqAuthHead = `query {
+    transaction(
+      where: {
+        hash: {
+          _eq: "\\\\x${tokenId}"
+        }
+      }
+    ) {
+      hash
+      authchains {
+        authchain_length
+      }
+    }
+  }`;
+  return await queryChainGraph(queryReqAuthHead, chaingraphUrl);
+}
