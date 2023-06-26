@@ -35,11 +35,27 @@ export default function Home() {
   const [tokenInfo, setTokenInfo] = useState<tokenInfo>();
 
   const handleChange = (e:any) => {
-    if((e.target as HTMLInputElement)) setTokenId(e.target.value);
+    if((e.target as HTMLInputElement)){
+      const tokenId = e.target.value;
+      setTokenId(tokenId);
+      const url = new URL(window.location.href);
+      const params = new URLSearchParams(url.search);
+      params.set("tokenId", tokenId);
+      window.history.replaceState({}, "", `${location.pathname}?${params}`);
+    }
   };
 
   const chaingraphUrl = "https://gql.chaingraph.pat.mn/v1/graphql";
   const ipfsGateway = "https://ipfs.io/ipfs/";
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const params = new URLSearchParams(url.search);
+    const readTokenId = params.get("tokenId");
+    if(!readTokenId) return
+    setTokenId(readTokenId);
+    lookUpTokenData(readTokenId);
+  },[]);
 
   useEffect(() => {
     if(!tokenInfo) return
@@ -80,7 +96,7 @@ export default function Home() {
     setTokenInfo(newTokenInfo);
   }
 
-  const lookUpTokenData = async () => {
+  const lookUpTokenData = async (tokenId:string) => {
     try{
       // get genesisSupplyFT
       const respJsonTotalSupply =  await queryTotalSupplyFT(tokenId,chaingraphUrl);
@@ -135,7 +151,7 @@ export default function Home() {
             value={tokenId}
             onChange={(e) => handleChange(e)}
             onKeyDown ={(e) => {
-              if(e.key === 'Enter') lookUpTokenData();
+              if(e.key === 'Enter') lookUpTokenData(tokenId);
             }}
           ></input>
 
@@ -188,7 +204,7 @@ export default function Home() {
                 location metadata: 
                 <a href={tokenInfo.httpsUrl} target="_blank" rel="noreferrer" style={{maxWidth: "570px", wordBreak: "break-all"}}>{tokenInfo.metaDataLocation}</a> <br/>
                 </>
-              ):null} <br/><br/>
+              ):null} <br/>
               authChain length: {tokenInfo.autchainLength} <br/>
             </div>
         </div>}
