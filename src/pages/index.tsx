@@ -1,7 +1,7 @@
 import Head from 'next/head'
 import { Inter } from '@next/font/google'
 import styles from '@/styles/Home.module.css'
-import { BCMR } from 'mainnet-js'
+import { BCMR, utf8ToBin, sha256, binToHex } from 'mainnet-js'
 import { useEffect, useState } from 'react'
 import { queryTotalSupplyFT, queryActiveMinting, querySupplyNFTs, queryAuthchainLength } from '../utils/queryChainGraph';
 
@@ -18,6 +18,8 @@ export default function Home() {
     tokenMetadata?: tokenMetadata | undefined
     authchainUpdates?: number
     authchainLength?: number
+    authHead?: string
+    metadataHashMatch?: boolean
   }
 
   interface tokenMetadata {
@@ -69,6 +71,7 @@ export default function Home() {
     let metaDataLocation= "";
     let httpsUrl= "";
     let authchainUpdates= 0;
+    let metadataHashMatch = false;
     try{
       const authChain = await BCMR.fetchAuthChainFromChaingraph({
         chaingraphUrl: chaingraphUrl,
@@ -81,19 +84,24 @@ export default function Home() {
           const bcmrLocation = authChain.at(-1)?.uris[0];
           if(!bcmrLocation) return;
           httpsUrl = bcmrLocation;
+          const providedHash = authChain.at(-1)?.contentHash;
           if(httpsUrl.startsWith("ipfs://")) httpsUrl = httpsUrl.replace("ipfs://", ipfsGateway);
           if(!httpsUrl.startsWith("http")) httpsUrl = `https://${bcmrLocation}`;
           await BCMR.addMetadataRegistryFromUri(httpsUrl);
           metadataInfo = BCMR.getTokenInfo(tokenId) as tokenMetadata;
           metaDataLocation = bcmrLocation;
-          console.log(bcmrLocation);
           console.log("Importing an on-chain resolved BCMR!");
+
+          const reponse = await fetch(httpsUrl);
+          const bcmrContent = await reponse.text();
+          const contentHash = binToHex(sha256.hash(utf8ToBin(bcmrContent)));
+          metadataHashMatch = contentHash === providedHash;
         }catch(e){ console.log(e) }
       }
     } catch(error){ console.log(error) }
 
     if(!tokenInfo) return
-    const newTokenInfo:tokenInfo = {...tokenInfo, metaDataLocation, tokenMetadata:metadataInfo, httpsUrl, authchainUpdates}
+    const newTokenInfo:tokenInfo = {...tokenInfo, metaDataLocation, tokenMetadata:metadataInfo, httpsUrl, authchainUpdates, metadataHashMatch}
 
     setTokenInfo(newTokenInfo);
   }
@@ -127,8 +135,10 @@ export default function Home() {
       // get autchainLength
       const respJsonAuthchainLength = await queryAuthchainLength(tokenId,chaingraphUrl);
       const authchainLength = respJsonAuthchainLength.data.transaction[0].authchains[0].authchain_length;
+      const resultAuthHead = respJsonAuthchainLength.data.transaction[0].authchains[0].authhead.identity_output[0].transaction_hash;
+      const authHead = resultAuthHead.slice(3);
 
-      setTokenInfo({genesisSupplyFT,totalSupplyNFTs,hasActiveMintingToken, genesisTx, authchainLength});
+      setTokenInfo({genesisSupplyFT,totalSupplyNFTs,hasActiveMintingToken, genesisTx, authchainLength, authHead});
     } catch(error){
       console.log(error);
       alert("The input is not a valid tokenId!")
@@ -178,23 +188,19 @@ export default function Home() {
                 hasActiveMintingToken: {tokenInfo.hasActiveMintingToken? "yes":"no"} <br/><br/>
                 </>
               ):null}
-              genesis tx: <a href={"https://chipnet.chaingraph.cash/tx/"+tokenInfo.genesisTx} target="_blank" rel="noreferrer">
+              genesis tx: <a href={"https://explorer.bitcoinunlimited.info/tx/"+tokenInfo.genesisTx} target="_blank" rel="noreferrer">
                 {tokenInfo.genesisTx}
               </a>
-              <br/><br/><br/>
+              <br/><br/>
               {tokenInfo.metaDataLocation !== undefined? (
                 tokenInfo.metaDataLocation !== ""?
                 (<>
-                  This token has metadata linked on-chain. <br/><br/>
+                  This token has metadata linked on-chain <br/><br/>
                 </>):
                 (<>
-                  This token has no metadata linked on-chain. <br/><br/>
+                  This token has no metadata linked on-chain <br/><br/>
                   </>)
               ):<> loading metadata...</>}
-              {tokenInfo.authchainUpdates? <>
-                authChain length: {tokenInfo.authchainLength}  <br/>
-                authChain metadata updates: {tokenInfo.authchainUpdates}  <br/><br/>
-              </> : null}
               {tokenInfo.tokenMetadata? (
                 <>
                 name: {tokenInfo.tokenMetadata.name} <br/><br/>
@@ -225,6 +231,14 @@ export default function Home() {
                   {tokenInfo.metaDataLocation}
                 </a><br/>
               </>):null} <br/>
+              {tokenInfo.authchainUpdates? <>
+                authChain length: {tokenInfo.authchainLength}  <br/>
+                authChain metadata updates: {tokenInfo.authchainUpdates}  <br/>
+                authHead txid: <a href={"https://explorer.bitcoinunlimited.info/tx/"+tokenInfo.genesisTx} target="_blank" rel="noreferrer">
+                  {tokenInfo.authHead}
+                </a><br/>
+                metadata hash matches: {tokenInfo.metadataHashMatch? "✅":"❌"}  <br/><br/>
+              </> : null}
             </div>
         </div>}
         </div>
