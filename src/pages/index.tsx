@@ -135,8 +135,8 @@ export default function Home() {
       // get autchainLength
       const respJsonAuthchainLength = await queryAuthchainLength(tokenId,chaingraphUrl);
       const authchainLength = respJsonAuthchainLength.data.transaction[0].authchains[0].authchain_length;
-      const resultAuthHead = respJsonAuthchainLength.data.transaction[0].authchains[0].authhead.identity_output[0].transaction_hash;
-      const authHead = resultAuthHead.slice(3);
+      const resultAuthHead = respJsonAuthchainLength.data.transaction[0].authchains[0].authhead.hash;
+      const authHead = resultAuthHead.slice(2);
 
       setTokenInfo({genesisSupplyFT,totalSupplyNFTs,hasActiveMintingToken, genesisTx, authchainLength, authHead});
     } catch(error){
@@ -234,7 +234,7 @@ export default function Home() {
               {tokenInfo.authchainUpdates? <>
                 authChain length: {tokenInfo.authchainLength}  <br/>
                 authChain metadata updates: {tokenInfo.authchainUpdates}  <br/>
-                authHead txid: <a href={"https://explorer.bitcoinunlimited.info/tx/"+tokenInfo.genesisTx} target="_blank" rel="noreferrer">
+                authHead txid: <a href={"https://explorer.bitcoinunlimited.info/tx/"+tokenInfo.authHead} target="_blank" rel="noreferrer">
                   {tokenInfo.authHead}
                 </a><br/>
                 metadata hash matches: {tokenInfo.metadataHashMatch? "✅":"❌"}  <br/><br/>
