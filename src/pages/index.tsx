@@ -216,16 +216,18 @@ export default function Home() {
                         tokenInfo.tokenMetadata.uris?.icon} />
                     <br/><br/>
                   </>:null}
-                web url: {tokenInfo.tokenMetadata.uris?.web? <a href={tokenInfo.tokenMetadata.uris?.web} target='_blank' rel="noreferrer" style={{display: "inline-block", color: "#00E"}}>
-                  {tokenInfo.tokenMetadata.uris?.web}
-                </a>: "none"}
-                <br/><br/>
-                  other uris: {Object.keys(tokenInfo.tokenMetadata.uris).filter(uri => uri != "icon" && uri != "web").length ?
-                    Object.keys(tokenInfo.tokenMetadata.uris).filter(uri => uri != "icon" && uri != "web").map((uriKey, index, array) =>
-                      <>
-                        <a key={uriKey} href={tokenInfo?.tokenMetadata?.uris[uriKey]} target='_blank' rel="noreferrer" style={{ display: "inline-block", color: "#00E" }}>{uriKey}</a>
-                        {(index != array.length - 1) ? ", " : null}</>
-                    ) : "none"} <br /><br />
+                {tokenInfo.tokenMetadata.uris ? <>
+                  web url: {tokenInfo.tokenMetadata.uris?.web? <a href={tokenInfo.tokenMetadata.uris?.web} target='_blank' rel="noreferrer" style={{display: "inline-block", color: "#00E"}}>
+                    {tokenInfo.tokenMetadata.uris?.web}
+                  </a>: "none"}
+                  <br/><br/>
+                    other uris: {Object.keys(tokenInfo.tokenMetadata.uris).filter(uri => uri != "icon" && uri != "web").length ?
+                      Object.keys(tokenInfo.tokenMetadata.uris).filter(uri => uri != "icon" && uri != "web").map((uriKey, index, array) =>
+                        <>
+                          <a key={uriKey} href={tokenInfo?.tokenMetadata?.uris[uriKey]} target='_blank' rel="noreferrer" style={{ display: "inline-block", color: "#00E" }}>{uriKey}</a>
+                          {(index != array.length - 1) ? ", " : null}</>
+                      ) : "none"} <br /><br />
+                </>:null}
                 location metadata: 
                 <a href={tokenInfo.httpsUrl} target="_blank" rel="noreferrer" style={{maxWidth: "570px", wordBreak: "break-all", display: "inline-block", color: "#00E"}}>
                   {tokenInfo.metaDataLocation}
