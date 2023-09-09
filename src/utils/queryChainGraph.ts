@@ -85,7 +85,10 @@ export async function queryAuthchainLength(tokenId:string, chaingraphUrl:string)
       hash
       authchains {
         authhead {
-          hash
+          hash,
+          identity_output {
+            fungible_token_amount
+          }
         },
         authchain_length
       }

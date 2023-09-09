@@ -10,6 +10,7 @@ const inter = Inter({ subsets: ['latin'] })
 export default function Home() {
   interface tokenInfo {
     genesisSupplyFT:number;
+    reservedSupplyFT:number;
     totalSupplyNFTs:number;
     hasActiveMintingToken:boolean;
     genesisTx: string,
@@ -137,14 +138,19 @@ export default function Home() {
       const authchainLength = respJsonAuthchainLength.data.transaction[0].authchains[0].authchain_length;
       const resultAuthHead = respJsonAuthchainLength.data.transaction[0].authchains[0].authhead.hash;
       const authHead = resultAuthHead.slice(2);
+      // get reservedSupplyFT
+      const respReservedSupplyFT:string = respJsonAuthchainLength.data.transaction[0].authchains[0].authhead.identity_output[0].fungible_token_amount;
+      const reservedSupplyFT:number = +respReservedSupplyFT;
 
-      setTokenInfo({genesisSupplyFT,totalSupplyNFTs,hasActiveMintingToken, genesisTx, authchainLength, authHead});
+      setTokenInfo({genesisSupplyFT,totalSupplyNFTs,hasActiveMintingToken, genesisTx, authchainLength, authHead,reservedSupplyFT});
     } catch(error){
       console.log(error);
       alert("The input is not a valid tokenId!")
       setTokenInfo(undefined);
     }
   }
+
+  const toPercentage = (decimalNumber:number) => (Math.round(decimalNumber *10000)/100).toFixed(2)
 
   return (
     <>
@@ -179,7 +185,15 @@ export default function Home() {
               <br/><br/>
               {tokenInfo.genesisSupplyFT? (
                 <>
-                genesisSupplyFT: {tokenInfo.genesisSupplyFT} <br/><br/>
+                genesis supply: {(tokenInfo.genesisSupplyFT).toLocaleString("en-GB")} <br/><br/>
+                {tokenInfo.reservedSupplyFT? (
+                  <>
+                    circulating supply: {(tokenInfo.genesisSupplyFT - tokenInfo.reservedSupplyFT).toLocaleString("en-GB")}
+                    {` (${toPercentage((tokenInfo.genesisSupplyFT - tokenInfo.reservedSupplyFT)/tokenInfo.genesisSupplyFT)}%)`}<br/><br/>
+                    reserved supply: {(tokenInfo.reservedSupplyFT).toLocaleString("en-GB")}
+                    {` (${toPercentage((tokenInfo.reservedSupplyFT)/tokenInfo.genesisSupplyFT)}%)`}<br/><br/>
+                  </>
+                ):null}
                 </>
               ):null}
               {tokenInfo.totalSupplyNFTs? (
