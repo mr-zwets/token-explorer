@@ -76,8 +76,7 @@ export default function Home() {
     try{
       const authChain = await BCMR.fetchAuthChainFromChaingraph({
         chaingraphUrl: chaingraphUrl,
-        transactionHash: tokenId,
-        network: "mainnet"
+        transactionHash: tokenId
       });
       if(authChain.at(-1)){
         try{
