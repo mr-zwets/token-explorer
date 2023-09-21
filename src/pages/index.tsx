@@ -31,6 +31,7 @@ export default function Home() {
     name: string,
     description?: string,
     token?: {
+      symbol: string,
       decimals?:number
     },
     uris: URIs
@@ -209,23 +210,25 @@ export default function Home() {
               ):null}
               genesis tx: <a href={"https://explorer.bitcoinunlimited.info/tx/"+tokenInfo.genesisTx} target="_blank" rel="noreferrer">
                 {tokenInfo.genesisTx}
-              </a>
-              <br/><br/>
+              </a><br/>
               {metadataInfo?.metaDataLocation !== undefined? (
                 metadataInfo.metaDataLocation !== ""?
                 (<>
-                  This token has metadata linked on-chain <br/><br/>
+                  This token has BCMR metadata linked on-chain <br/><br/>
                 </>):
                 (<>
-                  This token has no metadata linked on-chain <br/><br/>
+                  This token has no BCMR metadata linked on-chain <br/><br/>
                   </>)
               ):<> loading metadata...</>}
               {metadataInfo && metadataInfo.tokenMetadata? (
                 <>
                 name: {metadataInfo.tokenMetadata.name} <br/><br/>
+                {metadataInfo.tokenMetadata.token? (<>
+                  <div>symbol: {metadataInfo.tokenMetadata.token?.symbol}</div><br/>
+                </>): null}
                 description: {metadataInfo.tokenMetadata.description} <br/><br/>
                 {metadataInfo.tokenMetadata.token?.decimals? (<>
-                  <div>decimals: {metadataInfo.tokenMetadata.token?.decimals}</div><br/><br/>
+                  <div>decimals: {metadataInfo.tokenMetadata.token?.decimals}</div><br/>
                 </>): null}
                 {metadataInfo.tokenMetadata.uris?.icon ? <>
                     <span style={{ verticalAlign:"top"}}>icon: </span>
@@ -242,9 +245,9 @@ export default function Home() {
                   <br/><br/>
                     other uris: {Object.keys(metadataInfo.tokenMetadata.uris).filter(uri => uri != "icon" && uri != "web").length ?
                       Object.keys(metadataInfo.tokenMetadata.uris).filter(uri => uri != "icon" && uri != "web").map((uriKey, index, array) =>
-                        <>
-                          <a key={uriKey} href={metadataInfo?.tokenMetadata?.uris[uriKey]} target='_blank' rel="noreferrer" style={{ display: "inline-block", color: "#00E" }}>{uriKey}</a>
-                          {(index != array.length - 1) ? ", " : null}</>
+                        <span key={uriKey}>
+                          <a href={metadataInfo?.tokenMetadata?.uris[uriKey]} target='_blank' rel="noreferrer" style={{ display: "inline-block", color: "#00E" }}>{uriKey}</a>
+                          {(index != array.length - 1) ? ", " : null}</span>
                       ) : "none"} <br /><br />
                 </>:null}
                 location metadata: 
