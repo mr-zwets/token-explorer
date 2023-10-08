@@ -71,7 +71,7 @@ export default function Home() {
   async function fetchMetadata(tokenId:string){
     let metadataInfo:tokenMetadata | undefined;
     let metaDataLocation= "";
-    let httpsUrl= "";
+    let httpsUrl;
     let authchainUpdates= 0;
     let metadataHashMatch = false;
     try{
@@ -83,11 +83,11 @@ export default function Home() {
         try{
           authchainUpdates = authChain.length;
           const bcmrLocation = authChain.at(-1)?.uris[0];
-          if(!bcmrLocation) return;
-          httpsUrl = bcmrLocation;
+          httpsUrl = authChain.at(-1)?.httpsUrl;
+          if(!bcmrLocation || !httpsUrl) return;
           const providedHash = authChain.at(-1)?.contentHash;
-          if(httpsUrl.startsWith("ipfs://")) httpsUrl = httpsUrl.replace("ipfs://", ipfsGateway);
-          if(!httpsUrl.startsWith("http")) httpsUrl = `https://${bcmrLocation}`;
+          // use own gateway
+          if(bcmrLocation.startsWith("ipfs://")) httpsUrl = bcmrLocation.replace("ipfs://", ipfsGateway);
           await BCMR.addMetadataRegistryFromUri(httpsUrl);
           metadataInfo = BCMR.getTokenInfo(tokenId) as tokenMetadata;
           metaDataLocation = bcmrLocation;
