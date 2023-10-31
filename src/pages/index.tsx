@@ -55,7 +55,7 @@ export default function Home() {
     }
   };
 
-  const chaingraphUrl = "https://gql.chaingraph.pat.mn/v1/graphql";
+  const chaingraphUrl = "https://demo.chaingraph.cash/v1/graphql";
   const ipfsGateway = "https://ipfs.io/ipfs/";
 
   useEffect(() => {
