@@ -55,7 +55,7 @@ export default function Home() {
     }
   };
 
-  const chaingraphUrl = "https://demo.chaingraph.cash/v1/graphql";
+  const chaingraphUrl = "https://gql.chaingraph.pat.mn/v1/graphql";
   const ipfsGateway = "https://ipfs.io/ipfs/";
 
   useEffect(() => {
@@ -130,7 +130,7 @@ export default function Home() {
       let totalSupplyNFTs = respJsonSupplyNFTs.data.output.length;
       let indexOffset = 0;
       // limit of items returned by chaingraphquery is 5000
-      while (respJsonSupplyNFTs.data.output.length == 5000) {
+      while (totalSupplyNFTs == 5000) {
         indexOffset += 1;
         const respJsonSupplyNFTs2 = await querySupplyNFTs(tokenId, chaingraphUrl, 5000 * indexOffset);
         totalSupplyNFTs += respJsonSupplyNFTs2.data.output.length;
