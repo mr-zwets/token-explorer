@@ -79,6 +79,7 @@ export default function Home() {
         chaingraphUrl: chaingraphUrl,
         transactionHash: tokenId
       });
+      console.log(authChain)
       if(authChain.at(-1)){
         try{
           authchainUpdates = authChain.length;
@@ -249,12 +250,15 @@ export default function Home() {
                           <a href={metadataInfo?.tokenMetadata?.uris[uriKey]} target='_blank' rel="noreferrer" style={{ display: "inline-block", color: "#00E" }}>{uriKey}</a>
                           {(index != array.length - 1) ? ", " : null}</span>
                       ) : "none"} <br /><br />
-                </>:null}
-                location metadata: 
-                <a href={metadataInfo.httpsUrl} target="_blank" rel="noreferrer" style={{maxWidth: "570px", wordBreak: "break-all", display: "inline-block", color: "#00E"}}>
-                  {metadataInfo.metaDataLocation}
-                </a><br/>
-              </>):null} <br/>
+                </>:null} 
+              </>):null}
+              {metadataInfo?.httpsUrl ?
+                (<>
+                  location metadata: 
+                  <a href={metadataInfo.httpsUrl} target="_blank" rel="noreferrer" style={{maxWidth: "570px", wordBreak: "break-all", display: "inline-block", color: "#00E"}}>
+                    {metadataInfo.metaDataLocation}
+                  </a><br/><br/>
+                </>):null}
               {metadataInfo?.authchainUpdates? <>
                 authChain length: {tokenInfo.authchainLength}  <br/>
                 authChain metadata updates: {metadataInfo.authchainUpdates}  <br/>
