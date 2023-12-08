@@ -259,13 +259,15 @@ export default function Home() {
                     {metadataInfo.metaDataLocation}
                   </a><br/><br/>
                 </>):null}
-              {metadataInfo?.authchainUpdates? <>
+              {metadataInfo ? <>
                 authChain length: {tokenInfo.authchainLength}  <br/>
                 authChain metadata updates: {metadataInfo.authchainUpdates}  <br/>
                 authHead txid: <a href={"https://explorer.bitcoinunlimited.info/tx/"+tokenInfo.authHead} target="_blank" rel="noreferrer">
                   {tokenInfo.authHead}
                 </a><br/>
-                metadata hash matches: {metadataInfo.metadataHashMatch? "✅":"❌"}  <br/><br/>
+                {metadataInfo?.authchainUpdates? <>
+                  metadata hash matches: {metadataInfo.metadataHashMatch? "✅":"❌"}  <br/><br/>
+                </> : null}
               </> : null}
             </div>
         </div>}
