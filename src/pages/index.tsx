@@ -89,9 +89,9 @@ export default function Home() {
           const providedHash = authChain.at(-1)?.contentHash;
           // use own gateway
           if(bcmrLocation.startsWith("ipfs://")) httpsUrl = bcmrLocation.replace("ipfs://", ipfsGateway);
+          metaDataLocation = bcmrLocation;
           await BCMR.addMetadataRegistryFromUri(httpsUrl);
           metadataInfo = BCMR.getTokenInfo(tokenId) as tokenMetadata;
-          metaDataLocation = bcmrLocation;
           console.log("Importing an on-chain resolved BCMR!");
 
           const reponse = await fetch(httpsUrl);
