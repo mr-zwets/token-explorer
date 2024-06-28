@@ -56,7 +56,8 @@ export default function Home() {
   };
 
   const chaingraphUrl = "https://gql.chaingraph.pat.mn/v1/graphql";
-  const ipfsGateway = "https://ipfs.io/ipfs/";
+  const ipfsGateway = "https://w3s.link/ipfs/";
+  
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -67,6 +68,26 @@ export default function Home() {
     lookUpTokenData(readTokenId);
     fetchMetadata(readTokenId);
   },[]);
+
+  const ipfsGateways = [
+    "https://w3s.link/ipfs/",
+    "https://nftstorage.link/ipfs/",
+    "https://ipfs.io/ipfs/"
+  ]
+
+  async function* getIpfsGateway(ipfsGateways: string[], cid: string) {
+    
+    for (let url of ipfsGateways) {
+          try {
+              let response = await fetch(`${url}${cid}`, { method: 'HEAD' });
+              if (response.ok) {
+                  yield url; // Yield the accessible URL
+              }
+          } catch (error: any) {
+              console.error(`Error while checking ${url}: ${error.message}`);
+          }
+      }
+  }
 
   async function fetchMetadata(tokenId:string){
     let metadataInfo:tokenMetadata | undefined;
@@ -87,8 +108,21 @@ export default function Home() {
           httpsUrl = authChain.at(-1)?.httpsUrl;
           if(!bcmrLocation || !httpsUrl) return;
           const providedHash = authChain.at(-1)?.contentHash;
+
+          
           // use own gateway
-          if(bcmrLocation.startsWith("ipfs://")) httpsUrl = bcmrLocation.replace("ipfs://", ipfsGateway);
+          if(bcmrLocation.startsWith("ipfs://")) {
+            const cid = bcmrLocation.replace("ipfs://", "")
+            let ipfsGateway = ''
+            for await(let ig of getIpfsGateway(ipfsGateways, cid)) {
+              if (ig) {
+                ipfsGateway = ig
+                break
+              }
+            }
+            if (!ipfsGateway) throw new Error("No accessible ipfs gateway, please try again later.")
+            httpsUrl = bcmrLocation.replace("ipfs://", ipfsGateway);
+          }
           metaDataLocation = bcmrLocation;
           await BCMR.addMetadataRegistryFromUri(httpsUrl);
           metadataInfo = BCMR.getTokenInfo(tokenId) as tokenMetadata;
