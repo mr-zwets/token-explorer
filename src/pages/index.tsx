@@ -56,8 +56,6 @@ export default function Home() {
   };
 
   const chaingraphUrl = "https://gql.chaingraph.pat.mn/v1/graphql";
-  const ipfsGateway = "https://w3s.link/ipfs/";
-  
 
   useEffect(() => {
     const url = new URL(window.location.href);
