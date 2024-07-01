@@ -2,7 +2,7 @@ import Head from 'next/head'
 import { Inter } from '@next/font/google'
 import styles from '@/styles/Home.module.css'
 import { BCMR, utf8ToBin, sha256, binToHex } from 'mainnet-js'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { queryTotalSupplyFT, queryActiveMinting, querySupplyNFTs, queryAuthchainLength } from '../utils/queryChainGraph';
 
 const inter = Inter({ subsets: ['latin'] })
@@ -43,6 +43,7 @@ export default function Home() {
   const [tokenId, setTokenId] = useState<string>("");
   const [tokenInfo, setTokenInfo] = useState<tokenInfo>();
   const [metadataInfo, setMetadataInfo] = useState<metadataInfo>();
+  const [tokenIconUri, setTokenIconUri] = useState<string>("")
 
   const handleChange = (e:any) => {
     if((e.target as HTMLInputElement)){
@@ -56,7 +57,13 @@ export default function Home() {
   };
 
   const chaingraphUrl = "https://gql.chaingraph.pat.mn/v1/graphql";
-
+  
+  const ipfsGateways = useMemo(() => [
+    "https://w3s.link/ipfs/",
+    "https://nftstorage.link/ipfs/",
+    "https://ipfs.io/ipfs/"
+  ],[])
+  
   useEffect(() => {
     const url = new URL(window.location.href);
     const params = new URLSearchParams(url.search);
@@ -65,13 +72,29 @@ export default function Home() {
     setTokenId(readTokenId);
     lookUpTokenData(readTokenId);
     fetchMetadata(readTokenId);
+  
   },[]);
 
-  const ipfsGateways = [
-    "https://w3s.link/ipfs/",
-    "https://nftstorage.link/ipfs/",
-    "https://ipfs.io/ipfs/"
-  ]
+  useEffect(() => {
+    // Set Icon
+    (async () => {
+      if(metadataInfo?.tokenMetadata?.uris?.icon) {
+        if (!metadataInfo?.tokenMetadata?.uris?.icon?.startsWith('ipfs://')) {
+          return setTokenIconUri(metadataInfo?.tokenMetadata?.uris?.icon)
+        }
+        const path = metadataInfo?.tokenMetadata?.uris?.icon.replace('ipfs://','')
+        for await(let ig of getIpfsGateway(ipfsGateways, path)) {
+          if (ig) {
+            setTokenIconUri(`${ig}${path}`)
+            break
+          }
+        } 
+      } 
+    })()
+    
+  }, [metadataInfo, ipfsGateways])
+
+  
 
   async function* getIpfsGateway(ipfsGateways: string[], cid: string) {
     
@@ -266,9 +289,7 @@ export default function Home() {
                 {metadataInfo.tokenMetadata.uris?.icon ? <>
                     <span style={{ verticalAlign:"top"}}>icon: </span>
                     <img style={{ maxWidth: "60vw"}}
-                      src={metadataInfo.tokenMetadata.uris?.icon.startsWith("ipfs://") ?
-                        "https://dweb.link/ipfs/" + metadataInfo.tokenMetadata.uris?.icon.slice(7) :
-                        metadataInfo.tokenMetadata.uris?.icon} />
+                      src={tokenIconUri} />
                     <br/><br/>
                   </>:null}
                 {metadataInfo.tokenMetadata.uris ? <>
