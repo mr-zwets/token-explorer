@@ -2,7 +2,7 @@ import Head from 'next/head'
 import { Inter } from '@next/font/google'
 import styles from '@/styles/Home.module.css'
 import { BCMR, utf8ToBin, sha256, binToHex } from 'mainnet-js'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { queryTotalSupplyFT, queryActiveMinting, querySupplyNFTs, queryAuthchainLength } from '../utils/queryChainGraph';
 
 const inter = Inter({ subsets: ['latin'] })
@@ -43,6 +43,7 @@ export default function Home() {
   const [tokenId, setTokenId] = useState<string>("");
   const [tokenInfo, setTokenInfo] = useState<tokenInfo>();
   const [metadataInfo, setMetadataInfo] = useState<metadataInfo>();
+  const [tokenIconUri, setTokenIconUri] = useState<string>("")
 
   const handleChange = (e:any) => {
     if((e.target as HTMLInputElement)){
@@ -56,8 +57,13 @@ export default function Home() {
   };
 
   const chaingraphUrl = "https://gql.chaingraph.pat.mn/v1/graphql";
-  const ipfsGateway = "https://ipfs.io/ipfs/";
-
+  
+  const ipfsGateways = useMemo(() => [
+    "https://w3s.link/ipfs/",
+    "https://nftstorage.link/ipfs/",
+    "https://ipfs.io/ipfs/"
+  ],[])
+  
   useEffect(() => {
     const url = new URL(window.location.href);
     const params = new URLSearchParams(url.search);
@@ -66,7 +72,43 @@ export default function Home() {
     setTokenId(readTokenId);
     lookUpTokenData(readTokenId);
     fetchMetadata(readTokenId);
+  
   },[]);
+
+  useEffect(() => {
+    // Set Icon
+    (async () => {
+      if(metadataInfo?.tokenMetadata?.uris?.icon) {
+        if (!metadataInfo?.tokenMetadata?.uris?.icon?.startsWith('ipfs://')) {
+          return setTokenIconUri(metadataInfo?.tokenMetadata?.uris?.icon)
+        }
+        const path = metadataInfo?.tokenMetadata?.uris?.icon.replace('ipfs://','')
+        for await(let ig of getIpfsGateway(ipfsGateways, path)) {
+          if (ig) {
+            setTokenIconUri(`${ig}${path}`)
+            break
+          }
+        } 
+      } 
+    })()
+    
+  }, [metadataInfo, ipfsGateways])
+
+  
+
+  async function* getIpfsGateway(ipfsGateways: string[], cid: string) {
+    
+    for (let url of ipfsGateways) {
+          try {
+              let response = await fetch(`${url}${cid}`, { method: 'HEAD' });
+              if (response.ok) {
+                  yield url; // Yield the accessible URL
+              }
+          } catch (error: any) {
+              console.error(`Error while checking ${url}: ${error.message}`);
+          }
+      }
+  }
 
   async function fetchMetadata(tokenId:string){
     let metadataInfo:tokenMetadata | undefined;
@@ -87,8 +129,21 @@ export default function Home() {
           httpsUrl = authChain.at(-1)?.httpsUrl;
           if(!bcmrLocation || !httpsUrl) return;
           const providedHash = authChain.at(-1)?.contentHash;
+
+          
           // use own gateway
-          if(bcmrLocation.startsWith("ipfs://")) httpsUrl = bcmrLocation.replace("ipfs://", ipfsGateway);
+          if(bcmrLocation.startsWith("ipfs://")) {
+            const cid = bcmrLocation.replace("ipfs://", "")
+            let ipfsGateway = ''
+            for await(let ig of getIpfsGateway(ipfsGateways, cid)) {
+              if (ig) {
+                ipfsGateway = ig
+                break
+              }
+            }
+            if (!ipfsGateway) throw new Error("No accessible ipfs gateway, please try again later.")
+            httpsUrl = bcmrLocation.replace("ipfs://", ipfsGateway);
+          }
           metaDataLocation = bcmrLocation;
           await BCMR.addMetadataRegistryFromUri(httpsUrl);
           metadataInfo = BCMR.getTokenInfo(tokenId) as tokenMetadata;
@@ -234,9 +289,7 @@ export default function Home() {
                 {metadataInfo.tokenMetadata.uris?.icon ? <>
                     <span style={{ verticalAlign:"top"}}>icon: </span>
                     <img style={{ maxWidth: "60vw"}}
-                      src={metadataInfo.tokenMetadata.uris?.icon.startsWith("ipfs://") ?
-                        "https://dweb.link/ipfs/" + metadataInfo.tokenMetadata.uris?.icon.slice(7) :
-                        metadataInfo.tokenMetadata.uris?.icon} />
+                      src={tokenIconUri} />
                     <br/><br/>
                   </>:null}
                 {metadataInfo.tokenMetadata.uris ? <>
