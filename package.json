@@ -15,11 +15,13 @@
     "@types/react-dom": "18.0.10",
     "eslint": "8.32.0",
     "eslint-config-next": "13.1.2",
+    "gql.tada": "^1.8.5",
+    "graphql-request": "^7.1.0",
     "mainnet-js": "^2.2.7",
     "next": "13.1.2",
     "next-plausible": "^3.12.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "typescript": "4.9.4"
+    "typescript": "^5.5.4"
   }
 }

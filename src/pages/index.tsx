@@ -118,32 +118,32 @@ export default function Home() {
         [promiseTotalSupply,promiseSupplyNFTs,promiseActiveMinting,promiseAuthchainLength]
       );
       // calculate genesisSupplyFT
-      const genesisTx = respJsonTotalSupply?.data?.transaction[0]?.hash?.substring(2);
+      const genesisTx = respJsonTotalSupply?.transaction[0]?.hash?.substring(2);
       let genesisSupplyFT = 0;
-      if(respJsonTotalSupply.data.transaction[0].outputs){
-        genesisSupplyFT = respJsonTotalSupply.data.transaction[0].outputs.reduce(
-          (total:number, output:{fungible_token_amount:string}) => 
-            total + parseInt(output.fungible_token_amount),
+      if(respJsonTotalSupply.transaction[0].outputs){
+        genesisSupplyFT = respJsonTotalSupply.transaction[0].outputs.reduce(
+          (total:number, output) => 
+            total + parseInt(output?.fungible_token_amount ?? '0'),
           0
         );
       }
       // calculate totalSupplyNFTs
-      let totalSupplyNFTs = respJsonSupplyNFTs.data.output.length;
+      let totalSupplyNFTs = respJsonSupplyNFTs.output.length;
       let indexOffset = 0;
       // limit of items returned by chaingraphquery is 5000
       while (totalSupplyNFTs == 5000) {
         indexOffset += 1;
         const respJsonSupplyNFTs2 = await querySupplyNFTs(tokenId, chaingraphUrl, 5000 * indexOffset);
-        totalSupplyNFTs += respJsonSupplyNFTs2.data.output.length;
+        totalSupplyNFTs += respJsonSupplyNFTs2.output.length;
       }
       // parse hasActiveMintingToken
-      const hasActiveMintingToken = Boolean(respJsonActiveMinting.data.output.length);
+      const hasActiveMintingToken = Boolean(respJsonActiveMinting.output.length);
       // parse autchainLength, authHead
-      const authchainLength = respJsonAuthchainLength.data.transaction[0].authchains[0].authchain_length;
-      const resultAuthHead = respJsonAuthchainLength.data.transaction[0].authchains[0].authhead.hash;
+      const authchainLength = respJsonAuthchainLength.transaction[0].authchains[0].authchain_length ?? 0;
+      const resultAuthHead = respJsonAuthchainLength.transaction[0].authchains?.[0]?.authhead?.hash as string;
       const authHead = resultAuthHead.slice(2);
       // parse reservedSupplyFT
-      const respReservedSupplyFT:string = respJsonAuthchainLength.data.transaction[0].authchains[0].authhead.identity_output[0].fungible_token_amount;
+      const respReservedSupplyFT = respJsonAuthchainLength.transaction[0].authchains?.[0]?.authhead?.identity_output?.[0].fungible_token_amount as string;
       const reservedSupplyFT:number = +respReservedSupplyFT;
 
       setTokenInfo({genesisSupplyFT, totalSupplyNFTs, hasActiveMintingToken, genesisTx, authchainLength, authHead, reservedSupplyFT});
