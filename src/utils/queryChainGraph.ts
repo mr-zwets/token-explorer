@@ -19,8 +19,8 @@ async function queryChainGraph(queryReq:string, chaingraphUrl:string){
   return await response.json();
 }
 
-export async function queryTotalSupplyFT(tokenId:string, chaingraphUrl:string){
-  const queryReqTotalSupply = `query {
+export async function queryGenesisSupplyFT(tokenId:string, chaingraphUrl:string){
+  const queryReqGenesisSupply = `query {
       transaction(
         where: {
           inputs: {
@@ -33,6 +33,21 @@ export async function queryTotalSupplyFT(tokenId:string, chaingraphUrl:string){
         outputs(where: { token_category: { _eq: "\\\\x${tokenId}" } }) {
           fungible_token_amount
         }
+      }
+    }`;
+  return await queryChainGraph(queryReqGenesisSupply, chaingraphUrl);
+}
+
+export async function queryTotalSupplyFT(tokenId:string, chaingraphUrl:string){
+  const queryReqTotalSupply = `query {
+      output(
+        where: {
+          token_category: { _eq: "\\\\x${tokenId}" }
+          _not: { spent_by: {} }
+        }
+      ) {
+        locking_bytecode
+        fungible_token_amount
       }
     }`;
   return await queryChainGraph(queryReqTotalSupply, chaingraphUrl);

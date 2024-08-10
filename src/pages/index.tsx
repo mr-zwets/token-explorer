@@ -3,13 +3,14 @@ import { Inter } from '@next/font/google'
 import styles from '@/styles/Home.module.css'
 import { BCMR, utf8ToBin, sha256, binToHex } from 'mainnet-js'
 import { useEffect, useState } from 'react'
-import { queryTotalSupplyFT, queryActiveMinting, querySupplyNFTs, queryAuthchainLength } from '../utils/queryChainGraph';
+import { queryGenesisSupplyFT, queryActiveMinting, querySupplyNFTs, queryAuthchainLength, queryTotalSupplyFT } from '../utils/queryChainGraph';
 
 const inter = Inter({ subsets: ['latin'] })
 
 export default function Home() {
   interface tokenInfo {
     genesisSupplyFT:number;
+    totalSupplyFT:number;
     reservedSupplyFT:number;
     totalSupplyNFTs:number;
     hasActiveMintingToken:boolean;
@@ -109,19 +110,19 @@ export default function Home() {
 
   const lookUpTokenData = async (tokenId:string) => {
     try{
-      // get genesisSupplyFT, get totalSupplyNFTs, get totalSupplyNFTs & get hasActiveMintingToken
-      const promiseTotalSupply = queryTotalSupplyFT(tokenId,chaingraphUrl);
-      let promiseSupplyNFTs = querySupplyNFTs(tokenId, chaingraphUrl);
+      const promiseGenesisSupply = queryGenesisSupplyFT(tokenId,chaingraphUrl);
+      const promiseTotalSupply = queryTotalSupplyFT(tokenId,chaingraphUrl)
+      const promiseSupplyNFTs = querySupplyNFTs(tokenId, chaingraphUrl);
       const promiseActiveMinting = queryActiveMinting(tokenId,chaingraphUrl);
       const promiseAuthchainLength = queryAuthchainLength(tokenId,chaingraphUrl);
-      const [respJsonTotalSupply,respJsonSupplyNFTs,respJsonActiveMinting,respJsonAuthchainLength] = await Promise.all(
-        [promiseTotalSupply,promiseSupplyNFTs,promiseActiveMinting,promiseAuthchainLength]
+      const [respJsonGenesisSupply,respJsonTotalSupply, respJsonSupplyNFTs,respJsonActiveMinting,respJsonAuthchainLength] = await Promise.all(
+        [promiseGenesisSupply,promiseTotalSupply, promiseSupplyNFTs,promiseActiveMinting,promiseAuthchainLength]
       );
       // calculate genesisSupplyFT
-      const genesisTx = respJsonTotalSupply?.data?.transaction[0]?.hash?.substring(2);
+      const genesisTx = respJsonGenesisSupply?.data?.transaction[0]?.hash?.substring(2);
       let genesisSupplyFT = 0;
-      if(respJsonTotalSupply.data.transaction[0].outputs){
-        genesisSupplyFT = respJsonTotalSupply.data.transaction[0].outputs.reduce(
+      if(respJsonGenesisSupply.data.transaction[0].outputs){
+        genesisSupplyFT = respJsonGenesisSupply.data.transaction[0].outputs.reduce(
           (total:number, output:{fungible_token_amount:string}) => 
             total + parseInt(output.fungible_token_amount),
           0
@@ -146,7 +147,13 @@ export default function Home() {
       const respReservedSupplyFT:string = respJsonAuthchainLength.data.transaction[0].authchains[0].authhead.identity_output[0].fungible_token_amount;
       const reservedSupplyFT:number = +respReservedSupplyFT;
 
-      setTokenInfo({genesisSupplyFT, totalSupplyNFTs, hasActiveMintingToken, genesisTx, authchainLength, authHead, reservedSupplyFT});
+      const totalSupplyFT = respJsonTotalSupply.data.output.reduce(
+        (total:number, output:{fungible_token_amount:string}) => 
+          total + parseInt(output.fungible_token_amount),
+        0
+      );
+
+      setTokenInfo({genesisSupplyFT, totalSupplyFT, totalSupplyNFTs, hasActiveMintingToken, genesisTx, authchainLength, authHead, reservedSupplyFT});
     } catch(error){
       console.log(error);
       alert("The input is not a valid tokenId!")
@@ -193,6 +200,9 @@ export default function Home() {
               {tokenInfo.genesisSupplyFT? (
                 <>
                 genesis supply: {(tokenInfo.genesisSupplyFT).toLocaleString("en-GB")} <br/><br/>
+                {tokenInfo.genesisSupplyFT != tokenInfo.totalSupplyFT ? (
+                <>supply excluding burns: {(tokenInfo.totalSupplyFT).toLocaleString("en-GB")} <br/><br/></>
+                ): null}
                 {tokenInfo.reservedSupplyFT? (
                   <>
                     circulating supply: {(tokenInfo.genesisSupplyFT - tokenInfo.reservedSupplyFT).toLocaleString("en-GB")}
