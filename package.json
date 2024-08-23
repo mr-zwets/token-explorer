@@ -16,7 +16,6 @@
     "eslint": "8.32.0",
     "eslint-config-next": "13.1.2",
     "gql.tada": "^1.8.5",
-    "graphql-request": "^7.1.0",
     "mainnet-js": "^2.2.7",
     "next": "13.1.2",
     "next-plausible": "^3.12.0",
