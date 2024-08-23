@@ -1,26 +1,15 @@
-async function queryChainGraph(queryReq:string, chaingraphUrl:string){
-  const jsonObj = {
-      "operationName": null,
-      "variables": {},
-      "query": queryReq
-  };
-  const response = await fetch(chaingraphUrl, {
-      method: "POST",
-      mode: "cors", // no-cors, *cors, same-origin
-      cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-      credentials: "same-origin", // include, *same-origin, omit
-      headers: {
-          "Content-Type": "application/json",
-      },
-      redirect: "follow", // manual, *follow, error
-      referrerPolicy: "no-referrer", // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
-      body: JSON.stringify(jsonObj), // body data type must match "Content-Type" header
-  });
-  return await response.json();
-}
+import { graphql } from "gql.tada";
+import { Client, cacheExchange, fetchExchange } from 'urql';
 
-export async function queryGenesisSupplyFT(tokenId:string, chaingraphUrl:string){
-  const queryReqGenesisSupply = `query {
+const chaingraphUrl = "https://gql.chaingraph.pat.mn/v1/graphql";
+
+const client = new Client({
+  url: chaingraphUrl,
+  exchanges: [cacheExchange, fetchExchange],
+});
+
+export async function queryGenesisSupplyFT(tokenId:string){
+  const queryReqGenesisSupply = graphql(`query {
       transaction(
         where: {
           inputs: {
@@ -34,11 +23,11 @@ export async function queryGenesisSupplyFT(tokenId:string, chaingraphUrl:string)
           fungible_token_amount
         }
       }
-    }`;
-  return await queryChainGraph(queryReqGenesisSupply, chaingraphUrl);
+    }`);
+  return (await client.query(queryReqGenesisSupply, {})).data
 }
 
-export async function queryTotalSupplyFT(tokenId:string, chaingraphUrl:string){
+export async function queryTotalSupplyFT(tokenId:string){
   const queryReqTotalSupply = `query {
       output(
         where: {
@@ -50,11 +39,11 @@ export async function queryTotalSupplyFT(tokenId:string, chaingraphUrl:string){
         fungible_token_amount
       }
     }`;
-  return await queryChainGraph(queryReqTotalSupply, chaingraphUrl);
+  return (await client.query(queryReqTotalSupply, {})).data
 }
 
-export async function queryActiveMinting(tokenId:string, chaingraphUrl:string){
-  const queryReqActiveMinting = `query {
+export async function queryActiveMinting(tokenId:string){
+  const queryReqActiveMinting = graphql(`query {
       output(
         where: {
           token_category: { _eq: "\\\\x${tokenId}" }
@@ -64,14 +53,14 @@ export async function queryActiveMinting(tokenId:string, chaingraphUrl:string){
       ) {
         locking_bytecode
       }
-    }`;
-  return await queryChainGraph(queryReqActiveMinting, chaingraphUrl);
+    }`);
+  return (await client.query(queryReqActiveMinting, {})).data
 }
 
-export async function querySupplyNFTs(tokenId:string, chaingraphUrl:string, offset:number =0){
-  const queryReqTotalSupply = `query {
+export async function querySupplyNFTs(tokenId:string, offset:number =0){
+  const queryReqTotalSupply = graphql(`query {
       output(
-        offset: ${offset}
+        offset: "${offset}"
         where: {
           token_category: {
             _eq: "\\\\x${tokenId}"
@@ -84,12 +73,12 @@ export async function querySupplyNFTs(tokenId:string, chaingraphUrl:string, offs
       ) {
         locking_bytecode
       }
-  }`;
-  return await queryChainGraph(queryReqTotalSupply, chaingraphUrl);
+  }`);
+  return (await client.query(queryReqTotalSupply, {})).data
 }
 
-export async function queryAuthchainLength(tokenId:string, chaingraphUrl:string){
-  const queryReqAuthHead = `query {
+export async function queryAuthchainLength(tokenId:string){
+  const queryReqAuthHead = graphql(`query {
     transaction(
       where: {
         hash: {
@@ -108,6 +97,6 @@ export async function queryAuthchainLength(tokenId:string, chaingraphUrl:string)
         authchain_length
       }
     }
-  }`;
-  return await queryChainGraph(queryReqAuthHead, chaingraphUrl);
+  }`);
+  return (await client.query(queryReqAuthHead, {})).data
 }

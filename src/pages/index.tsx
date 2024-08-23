@@ -110,41 +110,45 @@ export default function Home() {
 
   const lookUpTokenData = async (tokenId:string) => {
     try{
-      const promiseGenesisSupply = queryGenesisSupplyFT(tokenId,chaingraphUrl);
-      const promiseTotalSupply = queryTotalSupplyFT(tokenId,chaingraphUrl)
-      const promiseSupplyNFTs = querySupplyNFTs(tokenId, chaingraphUrl);
-      const promiseActiveMinting = queryActiveMinting(tokenId,chaingraphUrl);
-      const promiseAuthchainLength = queryAuthchainLength(tokenId,chaingraphUrl);
-      const [respJsonGenesisSupply,respJsonTotalSupply, respJsonSupplyNFTs,respJsonActiveMinting,respJsonAuthchainLength] = await Promise.all(
-        [promiseGenesisSupply,promiseTotalSupply, promiseSupplyNFTs,promiseActiveMinting,promiseAuthchainLength]
+      const promiseGenesisSupply = queryGenesisSupplyFT(tokenId);
+      const promiseTotalSupply = queryTotalSupplyFT(tokenId);
+      const promiseSupplyNFTs = querySupplyNFTs(tokenId);
+      const promiseActiveMinting = queryActiveMinting(tokenId);
+      const promiseAuthchainLength = queryAuthchainLength(tokenId);
+      const [respJsonGenesisSupply,respJsonTotalSupply,respJsonSupplyNFTs,respJsonActiveMinting,respJsonAuthchainLength] = await Promise.all(
+        [promiseGenesisSupply,promiseTotalSupply,promiseSupplyNFTs,promiseActiveMinting,promiseAuthchainLength]
       );
+      if(!respJsonGenesisSupply || !respJsonTotalSupply || !respJsonSupplyNFTs || !respJsonActiveMinting || !respJsonAuthchainLength){
+        throw new Error("Error in Chaingraph fetches")
+      }
       // calculate genesisSupplyFT
-      const genesisTx = respJsonGenesisSupply?.data?.transaction[0]?.hash?.substring(2);
+      const genesisTx = respJsonGenesisSupply?.transaction[0]?.hash?.substring(2);
       let genesisSupplyFT = 0;
-      if(respJsonGenesisSupply.data.transaction[0].outputs){
-        genesisSupplyFT = respJsonGenesisSupply.data.transaction[0].outputs.reduce(
-          (total:number, output:{fungible_token_amount:string}) => 
-            total + parseInt(output.fungible_token_amount),
+      if(respJsonGenesisSupply.transaction[0].outputs){
+        genesisSupplyFT = respJsonGenesisSupply.transaction[0].outputs.reduce(
+          (total:number, output) => 
+            total + parseInt(output?.fungible_token_amount ?? '0'),
           0
         );
       }
       // calculate totalSupplyNFTs
-      let totalSupplyNFTs = respJsonSupplyNFTs.data.output.length;
+      let totalSupplyNFTs = respJsonSupplyNFTs.output.length;
       let indexOffset = 0;
       // limit of items returned by chaingraphquery is 5000
       while (totalSupplyNFTs == 5000) {
         indexOffset += 1;
-        const respJsonSupplyNFTs2 = await querySupplyNFTs(tokenId, chaingraphUrl, 5000 * indexOffset);
-        totalSupplyNFTs += respJsonSupplyNFTs2.data.output.length;
+        const respJsonSupplyNFTs2 = await querySupplyNFTs(tokenId, 5000 * indexOffset);
+        if(!respJsonSupplyNFTs2) throw new Error("Error in querySupplyNFTs")
+        totalSupplyNFTs += respJsonSupplyNFTs2.output.length;
       }
       // parse hasActiveMintingToken
-      const hasActiveMintingToken = Boolean(respJsonActiveMinting.data.output.length);
+      const hasActiveMintingToken = Boolean(respJsonActiveMinting.output.length);
       // parse autchainLength, authHead
-      const authchainLength = respJsonAuthchainLength.data.transaction[0].authchains[0].authchain_length;
-      const resultAuthHead = respJsonAuthchainLength.data.transaction[0].authchains[0].authhead.hash;
+      const authchainLength = respJsonAuthchainLength.transaction[0].authchains[0].authchain_length ?? 0;
+      const resultAuthHead = respJsonAuthchainLength.transaction[0].authchains?.[0]?.authhead?.hash as string;
       const authHead = resultAuthHead.slice(2);
       // parse reservedSupplyFT
-      const respReservedSupplyFT:string = respJsonAuthchainLength.data.transaction[0].authchains[0].authhead.identity_output[0].fungible_token_amount;
+      const respReservedSupplyFT = respJsonAuthchainLength.transaction[0].authchains?.[0]?.authhead?.identity_output?.[0].fungible_token_amount as string;
       const reservedSupplyFT:number = +respReservedSupplyFT;
 
       const totalSupplyFT = respJsonTotalSupply.data.output.reduce(
