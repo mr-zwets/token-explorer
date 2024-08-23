@@ -28,7 +28,7 @@ export async function queryGenesisSupplyFT(tokenId:string){
 }
 
 export async function queryTotalSupplyFT(tokenId:string){
-  const queryReqTotalSupply = `query {
+  const queryReqTotalSupply = graphql(`query {
       output(
         where: {
           token_category: { _eq: "\\\\x${tokenId}" }
@@ -38,7 +38,7 @@ export async function queryTotalSupplyFT(tokenId:string){
         locking_bytecode
         fungible_token_amount
       }
-    }`;
+    }`);
   return (await client.query(queryReqTotalSupply, {})).data
 }
 

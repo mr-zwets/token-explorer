@@ -151,9 +151,9 @@ export default function Home() {
       const respReservedSupplyFT = respJsonAuthchainLength.transaction[0].authchains?.[0]?.authhead?.identity_output?.[0].fungible_token_amount as string;
       const reservedSupplyFT:number = +respReservedSupplyFT;
 
-      const totalSupplyFT = respJsonTotalSupply.data.output.reduce(
-        (total:number, output:{fungible_token_amount:string}) => 
-          total + parseInt(output.fungible_token_amount),
+      const totalSupplyFT = respJsonTotalSupply.output.reduce(
+        (total:number, output) => 
+          total + parseInt(output.fungible_token_amount ?? "0"),
         0
       );
 
