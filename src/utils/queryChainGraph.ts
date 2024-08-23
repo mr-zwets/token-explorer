@@ -1,7 +1,14 @@
 import { graphql } from "gql.tada";
-import { request } from 'graphql-request'
+import { Client, cacheExchange, fetchExchange } from 'urql';
 
-export async function queryTotalSupplyFT(tokenId:string, chaingraphUrl:string){
+const chaingraphUrl = "https://gql.chaingraph.pat.mn/v1/graphql";
+
+const client = new Client({
+  url: chaingraphUrl,
+  exchanges: [cacheExchange, fetchExchange],
+});
+
+export async function queryTotalSupplyFT(tokenId:string){
   const queryReqTotalSupply = graphql(`query {
       transaction(
         where: {
@@ -17,10 +24,10 @@ export async function queryTotalSupplyFT(tokenId:string, chaingraphUrl:string){
         }
       }
     }`);
-  return await request(chaingraphUrl, queryReqTotalSupply)
+  return (await client.query(queryReqTotalSupply, {})).data
 }
 
-export async function queryActiveMinting(tokenId:string, chaingraphUrl:string){
+export async function queryActiveMinting(tokenId:string){
   const queryReqActiveMinting = graphql(`query {
       output(
         where: {
@@ -32,10 +39,10 @@ export async function queryActiveMinting(tokenId:string, chaingraphUrl:string){
         locking_bytecode
       }
     }`);
-  return await request(chaingraphUrl, queryReqActiveMinting)
+  return (await client.query(queryReqActiveMinting, {})).data
 }
 
-export async function querySupplyNFTs(tokenId:string, chaingraphUrl:string, offset:number =0){
+export async function querySupplyNFTs(tokenId:string, offset:number =0){
   const queryReqTotalSupply = graphql(`query {
       output(
         offset: "${offset}"
@@ -52,10 +59,10 @@ export async function querySupplyNFTs(tokenId:string, chaingraphUrl:string, offs
         locking_bytecode
       }
   }`);
-  return await request(chaingraphUrl, queryReqTotalSupply)
+  return (await client.query(queryReqTotalSupply, {})).data
 }
 
-export async function queryAuthchainLength(tokenId:string, chaingraphUrl:string){
+export async function queryAuthchainLength(tokenId:string){
   const queryReqAuthHead = graphql(`query {
     transaction(
       where: {
@@ -76,5 +83,5 @@ export async function queryAuthchainLength(tokenId:string, chaingraphUrl:string)
       }
     }
   }`);
-  return await request(chaingraphUrl, queryReqAuthHead)
+  return (await client.query(queryReqAuthHead, {})).data
 }

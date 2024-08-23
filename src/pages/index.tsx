@@ -110,13 +110,16 @@ export default function Home() {
   const lookUpTokenData = async (tokenId:string) => {
     try{
       // get genesisSupplyFT, get totalSupplyNFTs, get totalSupplyNFTs & get hasActiveMintingToken
-      const promiseTotalSupply = queryTotalSupplyFT(tokenId,chaingraphUrl);
-      let promiseSupplyNFTs = querySupplyNFTs(tokenId, chaingraphUrl);
-      const promiseActiveMinting = queryActiveMinting(tokenId,chaingraphUrl);
-      const promiseAuthchainLength = queryAuthchainLength(tokenId,chaingraphUrl);
+      const promiseTotalSupply = queryTotalSupplyFT(tokenId);
+      let promiseSupplyNFTs = querySupplyNFTs(tokenId);
+      const promiseActiveMinting = queryActiveMinting(tokenId);
+      const promiseAuthchainLength = queryAuthchainLength(tokenId);
       const [respJsonTotalSupply,respJsonSupplyNFTs,respJsonActiveMinting,respJsonAuthchainLength] = await Promise.all(
         [promiseTotalSupply,promiseSupplyNFTs,promiseActiveMinting,promiseAuthchainLength]
       );
+      if(!respJsonTotalSupply || !respJsonSupplyNFTs || !respJsonActiveMinting || !respJsonAuthchainLength){
+        throw new Error("Error in Chaingraph fetches")
+      }
       // calculate genesisSupplyFT
       const genesisTx = respJsonTotalSupply?.transaction[0]?.hash?.substring(2);
       let genesisSupplyFT = 0;
@@ -133,7 +136,8 @@ export default function Home() {
       // limit of items returned by chaingraphquery is 5000
       while (totalSupplyNFTs == 5000) {
         indexOffset += 1;
-        const respJsonSupplyNFTs2 = await querySupplyNFTs(tokenId, chaingraphUrl, 5000 * indexOffset);
+        const respJsonSupplyNFTs2 = await querySupplyNFTs(tokenId, 5000 * indexOffset);
+        if(!respJsonSupplyNFTs2) throw new Error("Error in querySupplyNFTs")
         totalSupplyNFTs += respJsonSupplyNFTs2.output.length;
       }
       // parse hasActiveMintingToken

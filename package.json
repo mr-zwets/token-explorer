@@ -22,6 +22,7 @@
     "next-plausible": "^3.12.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "urql": "^4.1.0"
   }
 }
