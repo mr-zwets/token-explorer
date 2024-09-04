@@ -44,6 +44,7 @@ export default function Home() {
   const [tokenId, setTokenId] = useState<string>("");
   const [tokenInfo, setTokenInfo] = useState<tokenInfo>();
   const [metadataInfo, setMetadataInfo] = useState<metadataInfo>();
+  const [tokenIconUri, setTokenIconUri] = useState<string>("")
 
   const handleChange = (e:any) => {
     if((e.target as HTMLInputElement)){
@@ -57,7 +58,7 @@ export default function Home() {
   };
 
   const chaingraphUrl = "https://gql.chaingraph.pat.mn/v1/graphql";
-  const ipfsGateway = "https://ipfs.io/ipfs/";
+  const ipfsGateway = "https://w3s.link/ipfs/";
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -68,6 +69,19 @@ export default function Home() {
     lookUpTokenData(readTokenId);
     fetchMetadata(readTokenId);
   },[]);
+
+  // Sets tokenIconUri when metadataInfo changes
+  useEffect(() => {
+    (async () => {
+      if(metadataInfo?.tokenMetadata?.uris?.icon) {
+        if (!metadataInfo?.tokenMetadata?.uris?.icon?.startsWith('ipfs://')) {
+          return setTokenIconUri(metadataInfo?.tokenMetadata?.uris?.icon)
+        }
+        const path = metadataInfo?.tokenMetadata?.uris?.icon.replace('ipfs://','')
+        setTokenIconUri(ipfsGateway + path)
+      } 
+    })()
+  }, [metadataInfo])
 
   async function fetchMetadata(tokenId:string){
     let metadataInfo:tokenMetadata | undefined;
@@ -82,19 +96,20 @@ export default function Home() {
       });
       console.log(authChain)
       if(authChain.at(-1)){
+        authchainUpdates = authChain.length;
+        const bcmrLocation = authChain.at(-1)?.uris[0];
+        httpsUrl = authChain.at(-1)?.httpsUrl;
+        if(!bcmrLocation || !httpsUrl) return;
+        const providedHash = authChain.at(-1)?.contentHash;
+        // use own gateway
+        if(bcmrLocation.startsWith("ipfs://")) httpsUrl = bcmrLocation.replace("ipfs://", ipfsGateway);
+        metaDataLocation = bcmrLocation;
+
+        // fetch httpsUrl of BCMR for tokenInfo
         try{
-          authchainUpdates = authChain.length;
-          const bcmrLocation = authChain.at(-1)?.uris[0];
-          httpsUrl = authChain.at(-1)?.httpsUrl;
-          if(!bcmrLocation || !httpsUrl) return;
-          const providedHash = authChain.at(-1)?.contentHash;
-          // use own gateway
-          if(bcmrLocation.startsWith("ipfs://")) httpsUrl = bcmrLocation.replace("ipfs://", ipfsGateway);
-          metaDataLocation = bcmrLocation;
+          console.log("Importing an on-chain resolved BCMR!");
           await BCMR.addMetadataRegistryFromUri(httpsUrl);
           metadataInfo = BCMR.getTokenInfo(tokenId) as tokenMetadata;
-          console.log("Importing an on-chain resolved BCMR!");
-
           const reponse = await fetch(httpsUrl);
           const bcmrContent = await reponse.text();
           const contentHash = binToHex(sha256.hash(utf8ToBin(bcmrContent)));
@@ -247,10 +262,7 @@ export default function Home() {
                 </>): null}
                 {metadataInfo.tokenMetadata.uris?.icon ? <>
                     <span style={{ verticalAlign:"top"}}>icon: </span>
-                    <img style={{ maxWidth: "60vw"}}
-                      src={metadataInfo.tokenMetadata.uris?.icon.startsWith("ipfs://") ?
-                        "https://dweb.link/ipfs/" + metadataInfo.tokenMetadata.uris?.icon.slice(7) :
-                        metadataInfo.tokenMetadata.uris?.icon} />
+                    <img style={{ maxWidth: "60vw"}} src={tokenIconUri} alt="tokenIcon"/>
                     <br/><br/>
                   </>:null}
                 {metadataInfo.tokenMetadata.uris ? <>
