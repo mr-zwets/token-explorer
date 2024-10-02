@@ -14,4 +14,4 @@ Take a look at [the token info of DogeCash](https://tokenexplorer.cash/?tokenId=
 
 The project was started from the [mainnet-js React-next](https://github.com/mainnet-cash/mainnet-js/tree/master/demo/react-next) example.
 [Mainnet-js](https://mainnet.cash/) is used to import onchain linked Bitcoin Cash Metadata Registries (BCMR).
-A [public chaingraph instance](https://gql.chaingraph.pat.mn/v1/graphql) is used to query on-chain token info such as the genesis transaction, the genesis supply of FT and active minting UTXOs.
+A [public chaingraph instance](https://demo.chaingraph.cash/v1/graphql) is used to query on-chain token info such as the genesis transaction, the genesis supply of FT and active minting UTXOs.
