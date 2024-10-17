@@ -1,7 +1,7 @@
 import { graphql } from "gql.tada";
 import { Client, cacheExchange, fetchExchange } from 'urql';
 
-const chaingraphUrl = "https://demo.chaingraph.cash/v1/graphql";
+const chaingraphUrl = "https://gql.chaingraph.pat.mn/v1/graphql";
 
 const client = new Client({
   url: chaingraphUrl,
