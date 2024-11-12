@@ -238,7 +238,7 @@ export default function Home() {
                 hasActiveMintingToken: {tokenInfo.hasActiveMintingToken? "yes":"no"} <br/><br/>
                 </>
               ):null}
-              genesis tx: <a href={"https://explorer.bitcoinunlimited.info/tx/"+tokenInfo.genesisTx} target="_blank" rel="noreferrer">
+              genesis tx: <a href={"https://explorer.electroncash.de/tx/"+tokenInfo.genesisTx} target="_blank" rel="noreferrer">
                 {tokenInfo.genesisTx}
               </a><br/>
               {metadataInfo?.metaDataLocation !== undefined? (
@@ -288,7 +288,7 @@ export default function Home() {
               {metadataInfo ? <>
                 authChain length: {tokenInfo.authchainLength}  <br/>
                 authChain metadata updates: {metadataInfo.authchainUpdates}  <br/>
-                authHead txid: <a href={"https://explorer.bitcoinunlimited.info/tx/"+tokenInfo.authHead} target="_blank" rel="noreferrer">
+                authHead txid: <a href={"https://explorer.electroncash.de/tx/"+tokenInfo.authHead} target="_blank" rel="noreferrer">
                   {tokenInfo.authHead}
                 </a><br/>
                 {metadataInfo?.authchainUpdates? <>
