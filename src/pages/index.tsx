@@ -220,14 +220,15 @@ export default function Home() {
                 <>
                 genesis supply: {(tokenInfo.genesisSupplyFT).toLocaleString("en-GB")} <br/><br/>
                 {tokenInfo.genesisSupplyFT != tokenInfo.totalSupplyFT ? (
-                <>supply excluding burns: {(tokenInfo.totalSupplyFT).toLocaleString("en-GB")} <br/><br/></>
+                <>supply excluding burns: {(tokenInfo.totalSupplyFT).toLocaleString("en-GB")} 
+                <span> (burned: {(tokenInfo.genesisSupplyFT - tokenInfo.totalSupplyFT).toLocaleString("en-GB")})</span><br/><br/></>
                 ): null}
                 {tokenInfo.reservedSupplyFT? (
                   <>
-                    circulating supply: {(tokenInfo.genesisSupplyFT - tokenInfo.reservedSupplyFT).toLocaleString("en-GB")}
-                    {` (${toPercentage((tokenInfo.genesisSupplyFT - tokenInfo.reservedSupplyFT)/tokenInfo.genesisSupplyFT)}%)`}<br/><br/>
+                    circulating supply: {(tokenInfo.totalSupplyFT - tokenInfo.reservedSupplyFT).toLocaleString("en-GB")}
+                    {` (${toPercentage((tokenInfo.totalSupplyFT - tokenInfo.reservedSupplyFT)/tokenInfo.totalSupplyFT)}%)`}<br/><br/>
                     reserved supply: {(tokenInfo.reservedSupplyFT).toLocaleString("en-GB")}
-                    {` (${toPercentage((tokenInfo.reservedSupplyFT)/tokenInfo.genesisSupplyFT)}%)`}<br/><br/>
+                    {` (${toPercentage((tokenInfo.reservedSupplyFT)/tokenInfo.totalSupplyFT)}%)`}<br/><br/>
                   </>
                 ):null}
                 </>
@@ -261,8 +262,8 @@ export default function Home() {
                   <div>decimals: {metadataInfo.tokenMetadata.token?.decimals}</div><br/>
                 </>): null}
                 {metadataInfo.tokenMetadata.uris?.icon ? <>
-                    <span style={{ verticalAlign:"top"}}>icon: </span>
-                    <img style={{ maxWidth: "60vw"}} src={tokenIconUri} alt="tokenIcon"/>
+                    <span style={{ verticalAlign:"top", width:"60vw", maxWidth:"500px"}}>icon: </span>
+                    <img style={{ width:"60vw", maxWidth: "500px"}} src={tokenIconUri} alt="tokenIcon"/>
                     <br/><br/>
                   </>:null}
                 {metadataInfo.tokenMetadata.uris ? <>
