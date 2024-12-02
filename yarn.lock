@@ -595,10 +595,10 @@ caniuse-lite@^1.0.30001406:
   resolved "https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30001445.tgz"
   integrity sha512-8sdQIdMztYmzfTMO6KfLny878Ln9c2M0fc7EH60IjlP4Dc4PiCy7K2Vl3ITmWgOyPgVQKa5x+UP/KqFsxj4mBg==
 
-chaingraph-ts@^0.2.1:
-  version "0.2.1"
-  resolved "https://registry.yarnpkg.com/chaingraph-ts/-/chaingraph-ts-0.2.1.tgz#b03481e965c8d90ddf0635ae11ac059197fa95a9"
-  integrity sha512-uFj6JfIondYmIqqHlq+Yh3GzkOOnjEtLfPUdLsqt+Qpwfms9QG+3B1wVuMFHEpgXJ4RYJ+d5BHHMPUZtr4UV+w==
+chaingraph-ts@^0.2.2:
+  version "0.2.2"
+  resolved "https://registry.yarnpkg.com/chaingraph-ts/-/chaingraph-ts-0.2.2.tgz#6afe68b3bc3ed889db516bc21f2c69d131b3e7f7"
+  integrity sha512-KKPXYlHxIbKbgUXNJf47B9gO1q7ZJ6wTSgT7Poaqf6rpn97RUY25njh4Z4Y+SnkSYKOJvfvLSO1g0gSZi9cRJQ==
   dependencies:
     "@bitauth/libauth" "^3.0.0"
     "@urql/core" "^5.0.8"
