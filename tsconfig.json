@@ -22,13 +22,8 @@
         "./src/*"
       ]
     },
-    "plugins": [
-      {
-        "name": "gql.tada/ts-plugin",
-        "schema": "https://demo.chaingraph.cash/v1/graphql",
-        "tadaOutputLocation": "./src/generated/graphql-env.d.ts"
-      }
-    ]
+    "moduleResolution": "node",
+    "resolveJsonModule": true
   },
   "include": [
     "next-env.d.ts",

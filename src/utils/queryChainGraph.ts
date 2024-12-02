@@ -1,12 +1,7 @@
-import { graphql } from "gql.tada";
-import { Client, cacheExchange, fetchExchange } from 'urql';
+import { graphql, ChaingraphClient } from "chaingraph-ts";
 
 const chaingraphUrl = "https://gql.chaingraph.pat.mn/v1/graphql";
-
-const client = new Client({
-  url: chaingraphUrl,
-  exchanges: [cacheExchange, fetchExchange],
-});
+const chaingraphClient = new ChaingraphClient(chaingraphUrl);
 
 export async function queryGenesisSupplyFT(tokenId:string){
   const queryReqGenesisSupply = graphql(`query GenesisSupplyFT (
@@ -27,7 +22,7 @@ export async function queryGenesisSupplyFT(tokenId:string){
       }
     }`);
   const variables = { tokenId: `\\x${tokenId}` }
-  return (await client.query(queryReqGenesisSupply, variables)).data
+  return (await chaingraphClient.query(queryReqGenesisSupply, variables)).data
 }
 
 export async function queryTotalSupplyFT(tokenId:string){
@@ -45,7 +40,7 @@ export async function queryTotalSupplyFT(tokenId:string){
       }
     }`);
   const variables = { tokenId: `\\x${tokenId}` }
-  return (await client.query(queryReqTotalSupply, variables)).data
+  return (await chaingraphClient.query(queryReqTotalSupply, variables)).data
 }
 
 export async function queryActiveMinting(tokenId:string){
@@ -63,7 +58,7 @@ export async function queryActiveMinting(tokenId:string){
       }
     }`);
   const variables = { tokenId: `\\x${tokenId}` }
-  return (await client.query(queryReqActiveMinting, variables)).data
+  return (await chaingraphClient.query(queryReqActiveMinting, variables)).data
 }
 
 export async function querySupplyNFTs(tokenId:string, offset:number =0){
@@ -87,7 +82,7 @@ export async function querySupplyNFTs(tokenId:string, offset:number =0){
       }
   }`);
   const variables = { tokenId: `\\x${tokenId}`, offset }
-  return (await client.query(queryReqTotalSupply, variables)).data
+  return (await chaingraphClient.query(queryReqTotalSupply, variables)).data
 }
 
 export async function queryAuthchainLength(tokenId:string){
@@ -114,5 +109,5 @@ export async function queryAuthchainLength(tokenId:string){
     }
   }`);
   const variables = { tokenId: `\\x${tokenId}` }
-  return (await client.query(queryReqAuthHead, variables)).data
+  return (await chaingraphClient.query(queryReqAuthHead, variables)).data
 }
