@@ -2,12 +2,13 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 6rem;
+  padding: 4rem 2rem;
   min-height: 100vh;
 }
 
 .title{
   padding-bottom: 35px;
+  text-align: center;
   font-family: var(--font-mono);
 }
 
