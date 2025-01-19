@@ -10,6 +10,8 @@ Take a look at [the token info of DogeCash](https://tokenexplorer.cash/?tokenId=
 
 ![ScreenshotDogeCash](./screenshots/ScreenshotDogeCash.png)
 
+![ScreenshotDogeCash2](./screenshots/ScreenshotDogeCash2.png)
+
 ## How it was made
 
 The project was started from the [mainnet-js React-next](https://github.com/mainnet-cash/mainnet-js/tree/master/demo/react-next) example.
