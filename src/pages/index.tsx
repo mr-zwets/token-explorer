@@ -1,5 +1,5 @@
 import Head from 'next/head'
-import { Inter } from '@next/font/google'
+import { Inter } from 'next/font/google'
 import styles from '@/styles/Home.module.css'
 import { BCMR, utf8ToBin, sha256, binToHex } from 'mainnet-js'
 import { useEffect, useState } from 'react'
