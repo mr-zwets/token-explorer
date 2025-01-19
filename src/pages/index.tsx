@@ -3,7 +3,7 @@ import { Inter } from 'next/font/google'
 import styles from '@/styles/Home.module.css'
 import { BCMR, utf8ToBin, sha256, binToHex } from 'mainnet-js'
 import { useEffect, useState } from 'react'
-import { queryGenesisSupplyFT, queryActiveMinting, querySupplyNFTs, queryAuthchainLength, queryTotalSupplyFT } from '../utils/queryChainGraph';
+import { queryGenesisSupplyFT, queryActiveMinting, querySupplyNFTs, queryAuthchainLength, queryAllTokenHolders } from '../utils/queryChainGraph';
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -17,6 +17,8 @@ export default function Home() {
     genesisTx: string,
     authchainLength?: number
     authHead?: string
+    numberHolders: number
+    numberTokenAddresses: number
   }
   
   interface metadataInfo {
@@ -131,14 +133,14 @@ export default function Home() {
   const lookUpTokenData = async (tokenId:string) => {
     try{
       const promiseGenesisSupply = queryGenesisSupplyFT(tokenId);
-      const promiseTotalSupply = queryTotalSupplyFT(tokenId);
+      const promiseAllTokenHolders = queryAllTokenHolders(tokenId);
       const promiseSupplyNFTs = querySupplyNFTs(tokenId);
       const promiseActiveMinting = queryActiveMinting(tokenId);
       const promiseAuthchainLength = queryAuthchainLength(tokenId);
-      const [respJsonGenesisSupply,respJsonTotalSupply,respJsonSupplyNFTs,respJsonActiveMinting,respJsonAuthchainLength] = await Promise.all(
-        [promiseGenesisSupply,promiseTotalSupply,promiseSupplyNFTs,promiseActiveMinting,promiseAuthchainLength]
+      const [respJsonGenesisSupply,respJsonAllTokenHolders,respJsonSupplyNFTs,respJsonActiveMinting,respJsonAuthchainLength] = await Promise.all(
+        [promiseGenesisSupply,promiseAllTokenHolders,promiseSupplyNFTs,promiseActiveMinting,promiseAuthchainLength]
       );
-      if(!respJsonGenesisSupply || !respJsonTotalSupply || !respJsonSupplyNFTs || !respJsonActiveMinting || !respJsonAuthchainLength){
+      if(!respJsonGenesisSupply || !respJsonAllTokenHolders || !respJsonSupplyNFTs || !respJsonActiveMinting || !respJsonAuthchainLength){
         throw new Error("Error in Chaingraph fetches")
       }
       // calculate genesisSupplyFT
@@ -171,13 +173,18 @@ export default function Home() {
       const respReservedSupplyFT = respJsonAuthchainLength.transaction[0].authchains?.[0]?.authhead?.identity_output?.[0].fungible_token_amount as string;
       const reservedSupplyFT:number = +respReservedSupplyFT;
 
-      const totalSupplyFT = respJsonTotalSupply.output.reduce(
+      const totalSupplyFT = respJsonAllTokenHolders.output.reduce(
         (total:number, output) => 
           total + parseInt(output.fungible_token_amount ?? "0"),
         0
       );
+      const uniqueLockingBytecodes = new Set(respJsonAllTokenHolders.output.map(output => output.locking_bytecode.slice(2)));
+      const numberHolders = Array.from(uniqueLockingBytecodes).filter(locking_bytecode =>
+        locking_bytecode.startsWith('76a914')
+      ).length;
+      const numberTokenAddresses = uniqueLockingBytecodes.size;
 
-      setTokenInfo({genesisSupplyFT, totalSupplyFT, totalSupplyNFTs, hasActiveMintingToken, genesisTx, authchainLength, authHead, reservedSupplyFT});
+      setTokenInfo({genesisSupplyFT, totalSupplyFT, totalSupplyNFTs, hasActiveMintingToken, genesisTx, authchainLength, authHead, reservedSupplyFT, numberHolders, numberTokenAddresses});
     } catch(error){
       console.log(error);
       alert("The input is not a valid tokenId!")
@@ -259,64 +266,70 @@ export default function Home() {
               {metadataInfo && metadataInfo.tokenMetadata? (
                 <>
                 {metadataInfo.tokenMetadata.uris?.icon && tokenIconUri ? <div>
-                    <span style={{ verticalAlign:"top", width:"60vw", maxWidth:"500px"}}>icon: </span>
-                    <img style={{ width:"60vw", maxWidth: "400px", marginLeft:"25px"}} src={tokenIconUri} alt="tokenIcon"/>
-                    <br/><br/>
-                  </div>:null}
-                  {tokenInfo.genesisSupplyFT? (
+                  <span style={{ verticalAlign:"top", width:"60vw", maxWidth:"500px"}}>icon: </span>
+                  <img style={{ width:"60vw", maxWidth: "400px", marginLeft:"25px"}} src={tokenIconUri} alt="tokenIcon"/>
+                  <br/><br/>
+                </div>:null}
+                {tokenInfo.genesisSupplyFT? (
                 <>
-                {tokenInfo.genesisSupplyFT != tokenInfo.totalSupplyFT ? (<></>
-                /*
-                <>supply excluding burns: {(tokenInfo.totalSupplyFT).toLocaleString("en-GB")} 
-                <span> (burned: {(tokenInfo.genesisSupplyFT - tokenInfo.totalSupplyFT).toLocaleString("en-GB")})</span><br/><br/></>
-                */): null}
-                {tokenInfo.reservedSupplyFT? (
-                  <>
-                    circulating supply: {(
-                      (tokenInfo.totalSupplyFT - tokenInfo.reservedSupplyFT) / (10 ** (metadataInfo?.tokenMetadata?.token?.decimals ?? 0))
-                      ).toLocaleString("en-GB") + ' ' + metadataInfo?.tokenMetadata?.token?.symbol
-                    }
-                    {` (${toPercentage((tokenInfo.totalSupplyFT - tokenInfo.reservedSupplyFT)/tokenInfo.totalSupplyFT)}%)`}<br/><br/>
-                    reserved supply: {(
-                      (tokenInfo.reservedSupplyFT) / (10 ** (metadataInfo?.tokenMetadata?.token?.decimals ?? 0))
-                      ).toLocaleString("en-GB") + ' ' + metadataInfo?.tokenMetadata?.token?.symbol
-                    }
-                    {` (${toPercentage((tokenInfo.reservedSupplyFT)/tokenInfo.totalSupplyFT)}%)`}<br/><br/>
-                  </>
-                ):null}
+                  {tokenInfo.genesisSupplyFT != tokenInfo.totalSupplyFT ? (<></>
+                  /*
+                  <>supply excluding burns: {(tokenInfo.totalSupplyFT).toLocaleString("en-GB")} 
+                  <span> (burned: {(tokenInfo.genesisSupplyFT - tokenInfo.totalSupplyFT).toLocaleString("en-GB")})</span><br/><br/></>
+                  */): null}
+                  {tokenInfo.reservedSupplyFT? (
+                    <>
+                      circulating supply: {(
+                        (tokenInfo.totalSupplyFT - tokenInfo.reservedSupplyFT) / (10 ** (metadataInfo?.tokenMetadata?.token?.decimals ?? 0))
+                        ).toLocaleString("en-GB") + ' ' + metadataInfo?.tokenMetadata?.token?.symbol
+                      }
+                      {` (${toPercentage((tokenInfo.totalSupplyFT - tokenInfo.reservedSupplyFT)/tokenInfo.totalSupplyFT)}%)`}<br/><br/>
+                      reserved supply: {(
+                        (tokenInfo.reservedSupplyFT) / (10 ** (metadataInfo?.tokenMetadata?.token?.decimals ?? 0))
+                        ).toLocaleString("en-GB") + ' ' + metadataInfo?.tokenMetadata?.token?.symbol
+                      }
+                      {` (${toPercentage((tokenInfo.reservedSupplyFT)/tokenInfo.totalSupplyFT)}%)`}<br/><br/>
+                    </>
+                  ):null}
                 </>
               ):null}
-                {metadataInfo.tokenMetadata.uris ? <>
-                  web url: {metadataInfo.tokenMetadata.uris?.web? <a href={metadataInfo.tokenMetadata.uris?.web} target='_blank' rel="noreferrer" style={{display: "inline-block", color: "#00E"}}>
-                    {metadataInfo.tokenMetadata.uris?.web}
-                  </a>: "none"}
-                  <br/><br/>
-                    other uris: {Object.keys(metadataInfo.tokenMetadata.uris).filter(uri => uri != "icon" && uri != "web").length ?
-                      Object.keys(metadataInfo.tokenMetadata.uris).filter(uri => uri != "icon" && uri != "web").map((uriKey, index, array) =>
-                        <span key={uriKey}>
-                          <a href={metadataInfo?.tokenMetadata?.uris[uriKey]} target='_blank' rel="noreferrer" style={{ display: "inline-block", color: "#00E" }}>{uriKey}</a>
-                          {(index != array.length - 1) ? ", " : null}</span>
-                      ) : "none"} <br /><br />
-                </>:null} 
-              </>):null}
               {metadataInfo?.httpsUrl ?
                 (<>
-                  location metadata: 
-                  <a href={metadataInfo.httpsUrl} target="_blank" rel="noreferrer" style={{maxWidth: "570px", wordBreak: "break-all", display: "inline-block", color: "#00E"}}>
-                    {metadataInfo.metaDataLocation}
-                  </a><br/><br/>
-                </>):null}
-              {metadataInfo ? <>
-                authChain length: {tokenInfo.authchainLength}  <br/><br/>
-                authChain metadata updates: {metadataInfo.authchainUpdates}  <br/><br/>
-                authHead txid: <a href={"https://explorer.electroncash.de/tx/"+tokenInfo.authHead} target="_blank" rel="noreferrer">
-                  {tokenInfo.authHead}
-                </a><br/>
-                {metadataInfo?.authchainUpdates? <>
-                  metadata hash matches: {metadataInfo.metadataHashMatch? "✅":"❌"}  <br/><br/>
-                </> : null}
+                Number of {metadataInfo?.tokenMetadata?.token?.symbol ?? ''} holding wallets: {tokenInfo.numberHolders}<br/><br/>
+                Number of {metadataInfo?.tokenMetadata?.token?.symbol ?? 'token'} holding addresses (including smart contracts): 
+                {tokenInfo.numberTokenAddresses}<br/><br/>
+              </>):null}
+              {metadataInfo.tokenMetadata.uris ? <>
+                web url: {metadataInfo.tokenMetadata.uris?.web? <a href={metadataInfo.tokenMetadata.uris?.web} target='_blank' rel="noreferrer" style={{display: "inline-block", color: "#00E"}}>
+                  {metadataInfo.tokenMetadata.uris?.web}
+                </a>: "none"}<br/><br/>
+                  other uris: {Object.keys(metadataInfo.tokenMetadata.uris).filter(uri => uri != "icon" && uri != "web").length ?
+                    Object.keys(metadataInfo.tokenMetadata.uris).filter(uri => uri != "icon" && uri != "web").map((uriKey, index, array) =>
+                      <span key={uriKey}>
+                        <a href={metadataInfo?.tokenMetadata?.uris[uriKey]} target='_blank' rel="noreferrer" style={{ display: "inline-block", color: "#00E" }}>{uriKey}</a>
+                        {(index != array.length - 1) ? ", " : null}
+                      </span>
+                    ) : "none"} <br /><br />
+              </>:null} 
+            </>):null}
+            {metadataInfo?.httpsUrl ?
+              (<>
+                location metadata: 
+                <a href={metadataInfo.httpsUrl} target="_blank" rel="noreferrer" style={{maxWidth: "570px", wordBreak: "break-all", display: "inline-block", color: "#00E"}}>
+                  {metadataInfo.metaDataLocation}
+                </a><br/><br/>
+              </>):null}
+            {metadataInfo ? <>
+              authChain length: {tokenInfo.authchainLength}  <br/><br/>
+              authChain metadata updates: {metadataInfo.authchainUpdates}  <br/><br/>
+              authHead txid: <a href={"https://explorer.electroncash.de/tx/"+tokenInfo.authHead} target="_blank" rel="noreferrer">
+                {tokenInfo.authHead}
+              </a><br/>
+              {metadataInfo?.authchainUpdates? <>
+                metadata hash matches: {metadataInfo.metadataHashMatch? "✅":"❌"}  <br/><br/>
               </> : null}
-            </div>
+            </> : null}
+          </div>
         </div>}
         </div>
         

@@ -25,7 +25,7 @@ export async function queryGenesisSupplyFT(tokenId:string){
   return (await chaingraphClient.query(queryReqGenesisSupply, variables)).data
 }
 
-export async function queryTotalSupplyFT(tokenId:string){
+export async function queryAllTokenHolders(tokenId:string){
   const queryReqTotalSupply = graphql(`query TotalSupplyFT (
     $tokenId: bytea
   ) {
