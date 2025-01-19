@@ -267,7 +267,7 @@ export default function Home() {
                 <>
                 {metadataInfo.tokenMetadata.uris?.icon && tokenIconUri ? <>
                 <span style={{ verticalAlign:"top"}}>icon: </span>
-                <div style={{ display:"flex", justifyContent: "center"}}>
+                <div style={{ display:"flex", justifyContent: "center", marginBottom:"20px"}}>
                   <img className='tokenImage' style={{ width:"60vw", maxWidth: "400px"}} src={tokenIconUri} alt="tokenIcon"/>
                   <br/><br/>
                 </div></>:null}

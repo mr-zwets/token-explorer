@@ -216,10 +216,6 @@
     font-size: 0.8rem;
   }
 
-  .description a {
-    padding: 1rem;
-  }
-
   .description p {
     align-items: center;
     inset: 0 0 auto;
