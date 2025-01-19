@@ -73,15 +73,20 @@ export default function Home() {
   // Sets tokenIconUri when metadataInfo changes
   useEffect(() => {
     (async () => {
-      if(metadataInfo?.tokenMetadata?.uris?.icon) {
-        if (!metadataInfo?.tokenMetadata?.uris?.icon?.startsWith('ipfs://')) {
-          return setTokenIconUri(metadataInfo?.tokenMetadata?.uris?.icon)
-        }
-        const path = metadataInfo?.tokenMetadata?.uris?.icon.replace('ipfs://','')
+      const imageOrIconUri = metadataInfo?.tokenMetadata?.uris?.image ?? metadataInfo?.tokenMetadata?.uris?.icon
+      if(imageOrIconUri) {
+        if (!imageOrIconUri?.startsWith('ipfs://')) return setTokenIconUri(imageOrIconUri)
+        const path = imageOrIconUri.replace('ipfs://','')
         setTokenIconUri(ipfsGateway + path)
       } 
     })()
   }, [metadataInfo])
+
+  async function clearExistingInfo(){
+    setTokenInfo(undefined);
+    setMetadataInfo(undefined)
+    setTokenIconUri("")
+  }
 
   async function fetchMetadata(tokenId:string){
     let metadataInfo:tokenMetadata | undefined;
@@ -203,6 +208,7 @@ export default function Home() {
             onChange={(e) => handleChange(e)}
             onKeyDown ={(e) => {
               if(e.key === 'Enter'){
+                clearExistingInfo()
                 lookUpTokenData(tokenId);
                 fetchMetadata(tokenId);
               } 
@@ -211,61 +217,75 @@ export default function Home() {
 
           {tokenInfo && <div style={{marginTop:"20px", overflowWrap:"anywhere",maxWidth:"570px"}}>
             <div className={styles.description}>
-              token type: 
-              {(tokenInfo.genesisSupplyFT && !tokenInfo.totalSupplyNFTs)? " Fungible Tokens only":null} 
-              {(!tokenInfo.genesisSupplyFT && tokenInfo.totalSupplyNFTs)? " NFTs only":null}
-              {(tokenInfo.genesisSupplyFT && tokenInfo.totalSupplyNFTs)? " Both Fugible & Non-Fungible tokens":null} 
+
+              {metadataInfo?.metaDataLocation !== undefined? (
+                metadataInfo.metaDataLocation == ""?
+                (<> This token has no BCMR metadata linked on-chain <br/><br/> </>) : null
+              ):<> loading metadata... <br/><br/></>}
+              {metadataInfo && metadataInfo.tokenMetadata? (
+                <>
+                name: {metadataInfo.tokenMetadata.name} <br/><br/>
+                token type: 
+                {(tokenInfo.genesisSupplyFT && !tokenInfo.totalSupplyNFTs)? " Fungible Token":null} 
+                {(!tokenInfo.genesisSupplyFT && tokenInfo.totalSupplyNFTs)? " NFTs":null}
+                {(tokenInfo.genesisSupplyFT && tokenInfo.totalSupplyNFTs)? " Both Fugible & Non-Fungible tokens":null} 
               <br/><br/>
+                {metadataInfo.tokenMetadata.token? (<>
+                  <div>symbol: {metadataInfo.tokenMetadata.token?.symbol}</div><br/>
+                </>): null}
+                {metadataInfo.tokenMetadata.token?.decimals? (<>
+                  <div>decimals: {metadataInfo.tokenMetadata.token?.decimals}</div><br/>
+                </>): null}
+              </>):null}
               {tokenInfo.genesisSupplyFT? (
                 <>
-                genesis supply: {(tokenInfo.genesisSupplyFT).toLocaleString("en-GB")} <br/><br/>
-                {tokenInfo.genesisSupplyFT != tokenInfo.totalSupplyFT ? (
+                genesis supply: {
+                  (tokenInfo.genesisSupplyFT / (10 ** (metadataInfo?.tokenMetadata?.token?.decimals ?? 0))).toLocaleString("en-GB")
+                  + ' ' + metadataInfo?.tokenMetadata?.token?.symbol
+                } <br/><br/>
+              </>):null}
+              {tokenInfo.totalSupplyNFTs? (
+                <>total amount NFTs: {tokenInfo.totalSupplyNFTs} <br/><br/></>
+              ):null}
+              description: {metadataInfo?.tokenMetadata?.description} <br/><br/>
+              genesis transaction: <a href={"https://explorer.electroncash.de/tx/"+tokenInfo.genesisTx} target="_blank" rel="noreferrer">
+                {tokenInfo.genesisTx}
+              </a><br/>
+              {tokenInfo.totalSupplyNFTs? (
+                <>
+                has active minting NFT: {tokenInfo.hasActiveMintingToken? "yes":"no"} <br/><br/>
+                </>
+              ):null}
+              {metadataInfo && metadataInfo.tokenMetadata? (
+                <>
+                {metadataInfo.tokenMetadata.uris?.icon && tokenIconUri ? <div>
+                    <span style={{ verticalAlign:"top", width:"60vw", maxWidth:"500px"}}>icon: </span>
+                    <img style={{ width:"60vw", maxWidth: "400px", marginLeft:"25px"}} src={tokenIconUri} alt="tokenIcon"/>
+                    <br/><br/>
+                  </div>:null}
+                  {tokenInfo.genesisSupplyFT? (
+                <>
+                {tokenInfo.genesisSupplyFT != tokenInfo.totalSupplyFT ? (<></>
+                /*
                 <>supply excluding burns: {(tokenInfo.totalSupplyFT).toLocaleString("en-GB")} 
                 <span> (burned: {(tokenInfo.genesisSupplyFT - tokenInfo.totalSupplyFT).toLocaleString("en-GB")})</span><br/><br/></>
-                ): null}
+                */): null}
                 {tokenInfo.reservedSupplyFT? (
                   <>
-                    circulating supply: {(tokenInfo.totalSupplyFT - tokenInfo.reservedSupplyFT).toLocaleString("en-GB")}
+                    circulating supply: {(
+                      (tokenInfo.totalSupplyFT - tokenInfo.reservedSupplyFT) / (10 ** (metadataInfo?.tokenMetadata?.token?.decimals ?? 0))
+                      ).toLocaleString("en-GB") + ' ' + metadataInfo?.tokenMetadata?.token?.symbol
+                    }
                     {` (${toPercentage((tokenInfo.totalSupplyFT - tokenInfo.reservedSupplyFT)/tokenInfo.totalSupplyFT)}%)`}<br/><br/>
-                    reserved supply: {(tokenInfo.reservedSupplyFT).toLocaleString("en-GB")}
+                    reserved supply: {(
+                      (tokenInfo.reservedSupplyFT) / (10 ** (metadataInfo?.tokenMetadata?.token?.decimals ?? 0))
+                      ).toLocaleString("en-GB") + ' ' + metadataInfo?.tokenMetadata?.token?.symbol
+                    }
                     {` (${toPercentage((tokenInfo.reservedSupplyFT)/tokenInfo.totalSupplyFT)}%)`}<br/><br/>
                   </>
                 ):null}
                 </>
               ):null}
-              {tokenInfo.totalSupplyNFTs? (
-                <>
-                totalAmountNFTs: {tokenInfo.totalSupplyNFTs} <br/><br/>
-                hasActiveMintingToken: {tokenInfo.hasActiveMintingToken? "yes":"no"} <br/><br/>
-                </>
-              ):null}
-              genesis tx: <a href={"https://explorer.electroncash.de/tx/"+tokenInfo.genesisTx} target="_blank" rel="noreferrer">
-                {tokenInfo.genesisTx}
-              </a><br/>
-              {metadataInfo?.metaDataLocation !== undefined? (
-                metadataInfo.metaDataLocation !== ""?
-                (<>
-                  This token has BCMR metadata linked on-chain <br/><br/>
-                </>):
-                (<>
-                  This token has no BCMR metadata linked on-chain <br/><br/>
-                  </>)
-              ):<> loading metadata...</>}
-              {metadataInfo && metadataInfo.tokenMetadata? (
-                <>
-                name: {metadataInfo.tokenMetadata.name} <br/><br/>
-                {metadataInfo.tokenMetadata.token? (<>
-                  <div>symbol: {metadataInfo.tokenMetadata.token?.symbol}</div><br/>
-                </>): null}
-                description: {metadataInfo.tokenMetadata.description} <br/><br/>
-                {metadataInfo.tokenMetadata.token?.decimals? (<>
-                  <div>decimals: {metadataInfo.tokenMetadata.token?.decimals}</div><br/>
-                </>): null}
-                {metadataInfo.tokenMetadata.uris?.icon ? <>
-                    <span style={{ verticalAlign:"top", width:"60vw", maxWidth:"500px"}}>icon: </span>
-                    <img style={{ width:"60vw", maxWidth: "500px"}} src={tokenIconUri} alt="tokenIcon"/>
-                    <br/><br/>
-                  </>:null}
                 {metadataInfo.tokenMetadata.uris ? <>
                   web url: {metadataInfo.tokenMetadata.uris?.web? <a href={metadataInfo.tokenMetadata.uris?.web} target='_blank' rel="noreferrer" style={{display: "inline-block", color: "#00E"}}>
                     {metadataInfo.tokenMetadata.uris?.web}
@@ -287,8 +307,8 @@ export default function Home() {
                   </a><br/><br/>
                 </>):null}
               {metadataInfo ? <>
-                authChain length: {tokenInfo.authchainLength}  <br/>
-                authChain metadata updates: {metadataInfo.authchainUpdates}  <br/>
+                authChain length: {tokenInfo.authchainLength}  <br/><br/>
+                authChain metadata updates: {metadataInfo.authchainUpdates}  <br/><br/>
                 authHead txid: <a href={"https://explorer.electroncash.de/tx/"+tokenInfo.authHead} target="_blank" rel="noreferrer">
                   {tokenInfo.authHead}
                 </a><br/>
