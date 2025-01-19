@@ -265,11 +265,12 @@ export default function Home() {
               ):null}
               {metadataInfo && metadataInfo.tokenMetadata? (
                 <>
-                {metadataInfo.tokenMetadata.uris?.icon && tokenIconUri ? <div>
-                  <span style={{ verticalAlign:"top", width:"60vw", maxWidth:"500px"}}>icon: </span>
-                  <img style={{ width:"60vw", maxWidth: "400px", marginLeft:"25px"}} src={tokenIconUri} alt="tokenIcon"/>
+                {metadataInfo.tokenMetadata.uris?.icon && tokenIconUri ? <>
+                <span style={{ verticalAlign:"top"}}>icon: </span>
+                <div style={{ display:"flex", justifyContent: "center"}}>
+                  <img className='tokenImage' style={{ width:"60vw", maxWidth: "400px"}} src={tokenIconUri} alt="tokenIcon"/>
                   <br/><br/>
-                </div>:null}
+                </div></>:null}
                 {tokenInfo.genesisSupplyFT? (
                 <>
                   {tokenInfo.genesisSupplyFT != tokenInfo.totalSupplyFT ? (<></>
