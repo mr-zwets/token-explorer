@@ -296,8 +296,8 @@ export default function Home() {
               ):null}
               {metadataInfo?.httpsUrl ?
                 (<>
-                Number of {metadataInfo?.tokenMetadata?.token?.symbol ?? ''} holding wallets: {tokenInfo.numberHolders}<br/><br/>
-                Number of {metadataInfo?.tokenMetadata?.token?.symbol ?? 'token'} holding addresses (including smart contracts): 
+                Number of user-addresses holding {metadataInfo?.tokenMetadata?.token?.symbol ?? 'the token'}: {tokenInfo.numberHolders}<br/><br/>
+                Total number of addresses holding {metadataInfo?.tokenMetadata?.token?.symbol ?? 'the token'} (including smart contracts): 
                 {tokenInfo.numberTokenAddresses}<br/><br/>
               </>):null}
               {metadataInfo.tokenMetadata.uris ? <>
