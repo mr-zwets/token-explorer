@@ -4,12 +4,14 @@ import styles from '@/styles/Home.module.css'
 import { BCMR, utf8ToBin, sha256, binToHex } from 'mainnet-js'
 import { useEffect, useState } from 'react'
 import { queryGenesisSupplyFT, queryActiveMinting, querySupplyNFTs, queryAuthchainLength, queryAllTokenHolders } from '../utils/queryChainGraph';
+import { formatTimestamp } from '@/utils/utils'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export default function Home() {
   interface tokenInfo {
     genesisSupplyFT:number;
+    genesisTxTimestamp:number;
     totalSupplyFT:number;
     reservedSupplyFT:number;
     totalSupplyNFTs:number;
@@ -145,6 +147,7 @@ export default function Home() {
       }
       // calculate genesisSupplyFT
       const genesisTx = respJsonGenesisSupply?.transaction[0]?.hash?.substring(2);
+      const genesisTxTimestamp = Number(respJsonGenesisSupply.transaction[0].block_inclusions[0].block.timestamp);
       let genesisSupplyFT = 0;
       if(respJsonGenesisSupply.transaction[0].outputs){
         genesisSupplyFT = respJsonGenesisSupply.transaction[0].outputs.reduce(
@@ -157,10 +160,12 @@ export default function Home() {
       let totalSupplyNFTs = respJsonSupplyNFTs.output.length;
       let indexOffset = 0;
       // limit of items returned by chaingraphquery is 5000
+      let fullListNftHolders = respJsonSupplyNFTs.output
       while (totalSupplyNFTs == 5000) {
         indexOffset += 1;
         const respJsonSupplyNFTs2 = await querySupplyNFTs(tokenId, 5000 * indexOffset);
         if(!respJsonSupplyNFTs2) throw new Error("Error in querySupplyNFTs")
+        fullListNftHolders = fullListNftHolders.concat(respJsonSupplyNFTs2.output);
         totalSupplyNFTs += respJsonSupplyNFTs2.output.length;
       }
       // parse hasActiveMintingToken
@@ -178,13 +183,14 @@ export default function Home() {
           total + parseInt(output.fungible_token_amount ?? "0"),
         0
       );
-      const uniqueLockingBytecodes = new Set(respJsonAllTokenHolders.output.map(output => output.locking_bytecode.slice(2)));
+      const listHoldingAddresses = genesisSupplyFT ? respJsonAllTokenHolders.output : fullListNftHolders 
+      const uniqueLockingBytecodes = new Set(listHoldingAddresses.map(output => output.locking_bytecode.slice(2)));
       const numberHolders = Array.from(uniqueLockingBytecodes).filter(locking_bytecode =>
         locking_bytecode.startsWith('76a914')
       ).length;
       const numberTokenAddresses = uniqueLockingBytecodes.size;
 
-      setTokenInfo({genesisSupplyFT, totalSupplyFT, totalSupplyNFTs, hasActiveMintingToken, genesisTx, authchainLength, authHead, reservedSupplyFT, numberHolders, numberTokenAddresses});
+      setTokenInfo({genesisSupplyFT, totalSupplyFT, totalSupplyNFTs, hasActiveMintingToken, genesisTx, genesisTxTimestamp, authchainLength, authHead, reservedSupplyFT, numberHolders, numberTokenAddresses});
     } catch(error){
       console.log(error);
       alert("The input is not a valid tokenId!")
@@ -255,14 +261,18 @@ export default function Home() {
                 <>total amount NFTs: {tokenInfo.totalSupplyNFTs} <br/><br/></>
               ):null}
               description: {metadataInfo?.tokenMetadata?.description} <br/><br/>
-              genesis transaction: <a href={"https://explorer.electroncash.de/tx/"+tokenInfo.genesisTx} target="_blank" rel="noreferrer">
-                {tokenInfo.genesisTx}
-              </a><br/>
-              {tokenInfo.totalSupplyNFTs? (
-                <>
-                has active minting NFT: {tokenInfo.hasActiveMintingToken? "yes":"no"} <br/><br/>
-                </>
-              ):null}
+              {metadataInfo?.tokenMetadata?.uris ? <>
+                web url: {metadataInfo.tokenMetadata.uris?.web? <a href={metadataInfo.tokenMetadata.uris?.web} target='_blank' rel="noreferrer" style={{display: "inline-block", color: "#00E"}}>
+                  {metadataInfo.tokenMetadata.uris?.web}
+                </a>: "none"}<br/><br/>
+                  other uris: {Object.keys(metadataInfo.tokenMetadata.uris).filter(uri => uri != "icon" && uri != "web").length ?
+                    Object.keys(metadataInfo.tokenMetadata.uris).filter(uri => uri != "icon" && uri != "web").map((uriKey, index, array) =>
+                      <span key={uriKey}>
+                        <a href={metadataInfo?.tokenMetadata?.uris[uriKey]} target='_blank' rel="noreferrer" style={{ display: "inline-block", color: "#00E" }}>{uriKey}</a>
+                        {(index != array.length - 1) ? ", " : null}
+                      </span>
+                    ) : "none"} <br /><br />
+              </>:null}
               {metadataInfo && metadataInfo.tokenMetadata? (
                 <>
                 {metadataInfo.tokenMetadata.uris?.icon && tokenIconUri ? <>
@@ -294,38 +304,35 @@ export default function Home() {
                   ):null}
                 </>
               ):null}
+              {tokenInfo.totalSupplyNFTs? (
+                <>
+                  has active minting NFT: {tokenInfo.hasActiveMintingToken? "yes":"no"} <br/><br/>
+                </>
+              ):null}
               {metadataInfo?.httpsUrl ?
                 (<>
                 Number of user-addresses holding {metadataInfo?.tokenMetadata?.token?.symbol ?? 'the token'}: {tokenInfo.numberHolders}<br/><br/>
                 Total number of addresses holding {metadataInfo?.tokenMetadata?.token?.symbol ?? 'the token'} (including smart contracts): 
                 {tokenInfo.numberTokenAddresses}<br/><br/>
               </>):null}
-              {metadataInfo.tokenMetadata.uris ? <>
-                web url: {metadataInfo.tokenMetadata.uris?.web? <a href={metadataInfo.tokenMetadata.uris?.web} target='_blank' rel="noreferrer" style={{display: "inline-block", color: "#00E"}}>
-                  {metadataInfo.tokenMetadata.uris?.web}
-                </a>: "none"}<br/><br/>
-                  other uris: {Object.keys(metadataInfo.tokenMetadata.uris).filter(uri => uri != "icon" && uri != "web").length ?
-                    Object.keys(metadataInfo.tokenMetadata.uris).filter(uri => uri != "icon" && uri != "web").map((uriKey, index, array) =>
-                      <span key={uriKey}>
-                        <a href={metadataInfo?.tokenMetadata?.uris[uriKey]} target='_blank' rel="noreferrer" style={{ display: "inline-block", color: "#00E" }}>{uriKey}</a>
-                        {(index != array.length - 1) ? ", " : null}
-                      </span>
-                    ) : "none"} <br /><br />
-              </>:null} 
             </>):null}
-            {metadataInfo?.httpsUrl ?
+            genesis transaction: <a href={"https://explorer.electroncash.de/tx/"+tokenInfo.genesisTx} target="_blank" rel="noreferrer">
+              {tokenInfo.genesisTx}
+            </a><br/>
+            timestamp genesis transaction: {formatTimestamp(tokenInfo.genesisTxTimestamp)} <br/><br/>
+            {metadataInfo ? <>
+              authChain length: {tokenInfo.authchainLength} <br/><br/>
+              authChain metadata updates: {metadataInfo.authchainUpdates} <br/><br/>
+              authHead txid: <a href={"https://explorer.electroncash.de/tx/"+tokenInfo.authHead} target="_blank" rel="noreferrer">
+                {tokenInfo.authHead}
+              </a><br/>
+              {metadataInfo?.httpsUrl ?
               (<>
                 location metadata: 
                 <a href={metadataInfo.httpsUrl} target="_blank" rel="noreferrer" style={{maxWidth: "570px", wordBreak: "break-all", display: "inline-block", color: "#00E"}}>
                   {metadataInfo.metaDataLocation}
                 </a><br/><br/>
               </>):null}
-            {metadataInfo ? <>
-              authChain length: {tokenInfo.authchainLength}  <br/><br/>
-              authChain metadata updates: {metadataInfo.authchainUpdates}  <br/><br/>
-              authHead txid: <a href={"https://explorer.electroncash.de/tx/"+tokenInfo.authHead} target="_blank" rel="noreferrer">
-                {tokenInfo.authHead}
-              </a><br/>
               {metadataInfo?.authchainUpdates? <>
                 metadata hash matches: {metadataInfo.metadataHashMatch? "✅":"❌"}  <br/><br/>
               </> : null}

@@ -15,9 +15,15 @@ export async function queryGenesisSupplyFT(tokenId:string){
           }
         }
       ) {
-        hash,
+        hash
         outputs(where: { token_category: { _eq: $tokenId } }) {
           fungible_token_amount
+        }
+        block_inclusions {
+          block {
+            timestamp
+            height
+          }
         }
       }
     }`);
