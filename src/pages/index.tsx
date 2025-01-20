@@ -258,7 +258,7 @@ export default function Home() {
                 } <br/><br/>
               </>):null}
               {tokenInfo.totalSupplyNFTs? (
-                <>total amount NFTs: {tokenInfo.totalSupplyNFTs} <br/><br/></>
+                <>total amount NFTs: {tokenInfo.totalSupplyNFTs.toLocaleString("en-GB")} <br/><br/></>
               ):null}
               description: {metadataInfo?.tokenMetadata?.description} <br/><br/>
               {metadataInfo?.tokenMetadata?.uris ? <>
@@ -311,9 +311,10 @@ export default function Home() {
               ):null}
               {metadataInfo?.httpsUrl ?
                 (<>
-                Number of user-addresses holding {metadataInfo?.tokenMetadata?.token?.symbol ?? 'the token'}: {tokenInfo.numberHolders}<br/><br/>
+                Number of user-addresses holding {metadataInfo?.tokenMetadata?.token?.symbol ?? 'the token'}: 
+                {tokenInfo.numberHolders.toLocaleString("en-GB")}<br/><br/>
                 Total number of addresses holding {metadataInfo?.tokenMetadata?.token?.symbol ?? 'the token'} (including smart contracts): 
-                {tokenInfo.numberTokenAddresses}<br/><br/>
+                {tokenInfo.numberTokenAddresses.toLocaleString("en-GB")}<br/><br/>
               </>):null}
             </>):null}
             genesis transaction: <a href={"https://explorer.electroncash.de/tx/"+tokenInfo.genesisTx} target="_blank" rel="noreferrer">
