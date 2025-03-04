@@ -61,6 +61,7 @@ export default function Home() {
     }
   };
 
+  const blockExplorerUrl = "https://cashnode.bch.ninja/tx/";
   const chaingraphUrl = "https://gql.chaingraph.pat.mn/v1/graphql";
   const ipfsGateway = "https://w3s.link/ipfs/";
 
@@ -317,14 +318,14 @@ export default function Home() {
                 {tokenInfo.numberTokenAddresses.toLocaleString("en-GB")}<br/><br/>
               </>):null}
             </>):null}
-            genesis transaction: <a href={"https://explorer.electroncash.de/tx/"+tokenInfo.genesisTx} target="_blank" rel="noreferrer">
+            genesis transaction: <a href={blockExplorerUrl+tokenInfo.genesisTx} target="_blank" rel="noreferrer">
               {tokenInfo.genesisTx}
             </a><br/>
             timestamp genesis transaction: {formatTimestamp(tokenInfo.genesisTxTimestamp)} <br/><br/>
             {metadataInfo ? <>
               authChain length: {tokenInfo.authchainLength} <br/><br/>
               authChain metadata updates: {metadataInfo.authchainUpdates} <br/><br/>
-              authHead txid: <a href={"https://explorer.electroncash.de/tx/"+tokenInfo.authHead} target="_blank" rel="noreferrer">
+              authHead txid: <a href={blockExplorerUrl+tokenInfo.authHead} target="_blank" rel="noreferrer">
                 {tokenInfo.authHead}
               </a><br/>
               {metadataInfo?.httpsUrl ?
