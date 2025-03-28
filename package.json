@@ -9,10 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "chaingraph-ts": "^0.2.2",
-    "mainnet-js": "^2.6.1",
-    "next": "^15.1.5",
-    "next-plausible": "^3.12.0",
+    "chaingraph-ts": "^0.2.3",
+    "mainnet-js": "^2.6.4",
+    "next": "^15.2.4",
+    "next-plausible": "^3.12.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
