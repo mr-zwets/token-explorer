@@ -11,17 +11,17 @@
   "dependencies": {
     "chaingraph-ts": "^0.2.3",
     "mainnet-js": "^2.6.4",
-    "next": "^15.2.4",
+    "next": "^15.3.2",
     "next-plausible": "^3.12.4",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
   },
   "devDependencies": {
     "@types/node": "20.5.9",
-    "@types/react": "^19.0.7",
-    "@types/react-dom": "^19.0.3",
+    "@types/react": "^19.1.4",
+    "@types/react-dom": "^19.1.5",
     "eslint": "^9.18.0",
     "eslint-config-next": "^15.1.5",
-    "typescript": "^5.7.3"
+    "typescript": "^5.8.3"
   }
 }
