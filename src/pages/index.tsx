@@ -1,50 +1,16 @@
 import Head from 'next/head'
-import { Inter } from 'next/font/google'
 import styles from '@/styles/Home.module.css'
 import { BCMR, utf8ToBin, sha256, binToHex } from 'mainnet-js'
 import { useEffect, useState } from 'react'
 import { queryGenesisSupplyFT, queryActiveMinting, querySupplyNFTs, queryAuthchainLength, queryAllTokenHolders } from '../utils/queryChainGraph';
 import { formatTimestamp } from '@/utils/utils'
+import type { tokenInfo, metadataInfo, tokenMetadata } from '@/interfaces'
 
-const inter = Inter({ subsets: ['latin'] })
+const blockExplorerUrl = "https://cashnode.bch.ninja/tx/";
+const chaingraphUrl = "https://gql.chaingraph.pat.mn/v1/graphql";
+const ipfsGateway = "https://w3s.link/ipfs/";;
 
 export default function Home() {
-  interface tokenInfo {
-    genesisSupplyFT:number;
-    genesisTxTimestamp:number;
-    totalSupplyFT:number;
-    reservedSupplyFT:number;
-    totalSupplyNFTs:number;
-    hasActiveMintingToken:boolean;
-    genesisTx: string,
-    authchainLength?: number
-    authHead?: string
-    numberHolders: number
-    numberTokenAddresses: number
-  }
-  
-  interface metadataInfo {
-    metaDataLocation?:string;
-    httpsUrl?:string;
-    authchainUpdates?: number
-    
-    tokenMetadata?: tokenMetadata | undefined
-    metadataHashMatch?: boolean
-  }
-
-  interface tokenMetadata {
-    name: string,
-    description?: string,
-    token?: {
-      symbol: string,
-      decimals?:number
-    },
-    uris: URIs
-  }
-  type URIs = {
-    [identifier: string]: string;
-  };
-
   const [tokenId, setTokenId] = useState<string>("");
   const [tokenInfo, setTokenInfo] = useState<tokenInfo>();
   const [metadataInfo, setMetadataInfo] = useState<metadataInfo>();
@@ -60,10 +26,6 @@ export default function Home() {
       window.history.replaceState({}, "", `${location.pathname}?${params}`);
     }
   };
-
-  const blockExplorerUrl = "https://cashnode.bch.ninja/tx/";
-  const chaingraphUrl = "https://gql.chaingraph.pat.mn/v1/graphql";
-  const ipfsGateway = "https://w3s.link/ipfs/";
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -255,7 +217,7 @@ export default function Home() {
                 <>
                 genesis supply: {
                   (tokenInfo.genesisSupplyFT / (10 ** (metadataInfo?.tokenMetadata?.token?.decimals ?? 0))).toLocaleString("en-GB")
-                  + ' ' + metadataInfo?.tokenMetadata?.token?.symbol
+                  + ' ' + (metadataInfo?.tokenMetadata?.token?.symbol ?? '')
                 } <br/><br/>
               </>):null}
               {tokenInfo.totalSupplyNFTs? (
