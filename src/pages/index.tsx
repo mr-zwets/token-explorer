@@ -12,6 +12,7 @@ const ipfsGateway = "https://w3s.link/ipfs/";;
 
 export default function Home() {
   const [tokenId, setTokenId] = useState<string>("");
+  const [isLoadingTokenInfo, setIsLoadingTokenInfo] = useState<boolean>(false);
   const [tokenInfo, setTokenInfo] = useState<tokenInfo>();
   const [metadataInfo, setMetadataInfo] = useState<metadataInfo>();
   const [tokenIconUri, setTokenIconUri] = useState<string>("")
@@ -33,6 +34,7 @@ export default function Home() {
     const readTokenId = params.get("tokenId");
     if(!readTokenId) return
     setTokenId(readTokenId);
+    setIsLoadingTokenInfo(true);
     lookUpTokenData(readTokenId);
     fetchMetadata(readTokenId);
   },[]);
@@ -49,6 +51,10 @@ export default function Home() {
     })()
   }, [metadataInfo])
 
+  useEffect(() => {
+    if(tokenInfo) setIsLoadingTokenInfo(false)
+  }, [tokenInfo])
+
   async function clearExistingInfo(){
     setTokenInfo(undefined);
     setMetadataInfo(undefined)
@@ -60,7 +66,7 @@ export default function Home() {
     let metaDataLocation= "";
     let httpsUrl;
     let authchainUpdates= 0;
-    let metadataHashMatch = false;
+    let metadataHashMatch = undefined;
     try{
       const authChain = await BCMR.fetchAuthChainFromChaingraph({
         chaingraphUrl: chaingraphUrl,
@@ -83,6 +89,10 @@ export default function Home() {
           await BCMR.addMetadataRegistryFromUri(httpsUrl);
           metadataInfo = BCMR.getTokenInfo(tokenId) as tokenMetadata;
           const reponse = await fetch(httpsUrl);
+          if(!reponse.ok){
+            metadataHashMatch = false;
+            throw new Error(`Failed to fetch BCMR content from ${httpsUrl}: ${reponse.status} ${reponse.statusText}`);
+          }
           const bcmrContent = await reponse.text();
           const contentHash = binToHex(sha256.hash(utf8ToBin(bcmrContent)));
           metadataHashMatch = contentHash === providedHash;
@@ -174,7 +184,7 @@ export default function Home() {
       <main className={styles.main}>
         <h1 className={styles.title}>BCMR Token Explorer</h1>
         <div style={{display:"block"}}>      
-          <h2  className={styles.description}>Enter tokenId: </h2>
+          <h2 className={styles.description}>Enter tokenId: </h2>
           <input
              className={styles.description}
              style={{width:"80vw", maxWidth:"570px",padding:"10px 20px"}}
@@ -185,11 +195,15 @@ export default function Home() {
             onKeyDown ={(e) => {
               if(e.key === 'Enter'){
                 clearExistingInfo()
+                setIsLoadingTokenInfo(true);
                 lookUpTokenData(tokenId);
                 fetchMetadata(tokenId);
               } 
             }}
           ></input>
+          { isLoadingTokenInfo && !tokenInfo && <div className={styles.description} style={{marginTop:"20px"}}>
+              loading on-chain tokenInfo...
+          </div>}
 
           {tokenInfo && <div style={{marginTop:"20px", overflowWrap:"anywhere",maxWidth:"570px"}}>
             <div className={styles.description}>
@@ -201,11 +215,14 @@ export default function Home() {
               {metadataInfo && metadataInfo.tokenMetadata? (
                 <>
                 name: {metadataInfo.tokenMetadata.name} <br/><br/>
-                token type: 
+              </>):null}
+              token type: 
                 {(tokenInfo.genesisSupplyFT && !tokenInfo.totalSupplyNFTs)? " Fungible Token":null} 
                 {(!tokenInfo.genesisSupplyFT && tokenInfo.totalSupplyNFTs)? " NFTs":null}
                 {(tokenInfo.genesisSupplyFT && tokenInfo.totalSupplyNFTs)? " Both Fugible & Non-Fungible tokens":null} 
               <br/><br/>
+              {metadataInfo && metadataInfo.tokenMetadata? (
+                <>
                 {metadataInfo.tokenMetadata.token? (<>
                   <div>symbol: {metadataInfo.tokenMetadata.token?.symbol}</div><br/>
                 </>): null}
@@ -223,21 +240,21 @@ export default function Home() {
               {tokenInfo.totalSupplyNFTs? (
                 <>total amount NFTs: {tokenInfo.totalSupplyNFTs.toLocaleString("en-GB")} <br/><br/></>
               ):null}
-              description: {metadataInfo?.tokenMetadata?.description} <br/><br/>
-              {metadataInfo?.tokenMetadata?.uris ? <>
-                web url: {metadataInfo.tokenMetadata.uris?.web? <a href={metadataInfo.tokenMetadata.uris?.web} target='_blank' rel="noreferrer" style={{display: "inline-block", color: "#00E"}}>
-                  {metadataInfo.tokenMetadata.uris?.web}
-                </a>: "none"}<br/><br/>
-                  other uris: {Object.keys(metadataInfo.tokenMetadata.uris).filter(uri => uri != "icon" && uri != "web").length ?
-                    Object.keys(metadataInfo.tokenMetadata.uris).filter(uri => uri != "icon" && uri != "web").map((uriKey, index, array) =>
-                      <span key={uriKey}>
-                        <a href={metadataInfo?.tokenMetadata?.uris[uriKey]} target='_blank' rel="noreferrer" style={{ display: "inline-block", color: "#00E" }}>{uriKey}</a>
-                        {(index != array.length - 1) ? ", " : null}
-                      </span>
-                    ) : "none"} <br /><br />
-              </>:null}
               {metadataInfo && metadataInfo.tokenMetadata? (
                 <>
+                  description: {metadataInfo?.tokenMetadata?.description} <br/><br/>
+                  {metadataInfo?.tokenMetadata?.uris ? <>
+                    web url: {metadataInfo.tokenMetadata.uris?.web? <a href={metadataInfo.tokenMetadata.uris?.web} target='_blank' rel="noreferrer" style={{display: "inline-block", color: "#00E"}}>
+                      {metadataInfo.tokenMetadata.uris?.web}
+                    </a>: "none"}<br/><br/>
+                      other uris: {Object.keys(metadataInfo.tokenMetadata.uris).filter(uri => uri != "icon" && uri != "web").length ?
+                        Object.keys(metadataInfo.tokenMetadata.uris).filter(uri => uri != "icon" && uri != "web").map((uriKey, index, array) =>
+                          <span key={uriKey}>
+                            <a href={metadataInfo?.tokenMetadata?.uris[uriKey]} target='_blank' rel="noreferrer" style={{ display: "inline-block", color: "#00E" }}>{uriKey}</a>
+                            {(index != array.length - 1) ? ", " : null}
+                          </span>
+                        ) : "none"} <br /><br />
+                  </>:null}
                 {metadataInfo.tokenMetadata.uris?.icon && tokenIconUri ? <>
                 <span style={{ verticalAlign:"top"}}>icon: </span>
                 <div style={{ display:"flex", justifyContent: "center", marginBottom:"20px"}}>
@@ -298,7 +315,7 @@ export default function Home() {
                 </a><br/><br/>
               </>):null}
               {metadataInfo?.authchainUpdates? <>
-                metadata hash matches: {metadataInfo.metadataHashMatch? "✅":"❌"}  <br/><br/>
+                metadata hash matches: {metadataInfo.metadataHashMatch? "✅": metadataInfo.metadataHashMatch == false ? "❌" : "❔"}  <br/><br/>
               </> : null}
             </> : null}
           </div>
