@@ -173,6 +173,11 @@ export default function Home() {
 
   const toPercentage = (decimalNumber:number) => (Math.round(decimalNumber *10000)/100).toFixed(2)
 
+  const displayTokenAmount = (amount:number) => {
+    const amountDecimals = amount / (10 ** (metadataInfo?.tokenMetadata?.token?.decimals ?? 0))
+    return amountDecimals.toLocaleString("en-GB") + ' ' + (metadataInfo?.tokenMetadata?.token?.symbol ?? '')
+  }
+
   return (
     <>
       <Head>
@@ -233,8 +238,7 @@ export default function Home() {
               {tokenInfo.genesisSupplyFT? (
                 <>
                 genesis supply: {
-                  (tokenInfo.genesisSupplyFT / (10 ** (metadataInfo?.tokenMetadata?.token?.decimals ?? 0))).toLocaleString("en-GB")
-                  + ' ' + (metadataInfo?.tokenMetadata?.token?.symbol ?? '')
+                  displayTokenAmount(tokenInfo.genesisSupplyFT)
                 } <br/><br/>
               </>):null}
               {tokenInfo.totalSupplyNFTs? (
@@ -263,25 +267,21 @@ export default function Home() {
                 </div></>:null}
                 {tokenInfo.genesisSupplyFT? (
                 <>
-                  {tokenInfo.genesisSupplyFT != tokenInfo.totalSupplyFT ? (<></>
-                  /*
-                  <>supply excluding burns: {(tokenInfo.totalSupplyFT).toLocaleString("en-GB")} 
-                  <span> (burned: {(tokenInfo.genesisSupplyFT - tokenInfo.totalSupplyFT).toLocaleString("en-GB")})</span><br/><br/></>
-                  */): null}
+                  {tokenInfo.genesisSupplyFT != tokenInfo.totalSupplyFT ? (
+                  <>
+                  <span> burned: {displayTokenAmount(tokenInfo.genesisSupplyFT - tokenInfo.totalSupplyFT)}</span>
+                  <div>supply excluding burns: {displayTokenAmount(tokenInfo.totalSupplyFT)} </div><br/>
+                  </>
+                  ): null}
                   {tokenInfo.reservedSupplyFT? (
                     <>
-                      circulating supply: {(
-                        (tokenInfo.totalSupplyFT - tokenInfo.reservedSupplyFT) / (10 ** (metadataInfo?.tokenMetadata?.token?.decimals ?? 0))
-                        ).toLocaleString("en-GB") + ' ' + metadataInfo?.tokenMetadata?.token?.symbol
-                      }
+                      circulating supply: {displayTokenAmount(tokenInfo.totalSupplyFT - tokenInfo.reservedSupplyFT)}
                       {` (${toPercentage((tokenInfo.totalSupplyFT - tokenInfo.reservedSupplyFT)/tokenInfo.totalSupplyFT)}%)`}<br/><br/>
-                      reserved supply: {(
-                        (tokenInfo.reservedSupplyFT) / (10 ** (metadataInfo?.tokenMetadata?.token?.decimals ?? 0))
-                        ).toLocaleString("en-GB") + ' ' + metadataInfo?.tokenMetadata?.token?.symbol
-                      }
+                      reserved supply: {displayTokenAmount(tokenInfo.reservedSupplyFT)}
                       {` (${toPercentage((tokenInfo.reservedSupplyFT)/tokenInfo.totalSupplyFT)}%)`}<br/><br/>
                     </>
-                  ):null}
+                  ):
+                  <>No reserved supply (full supply circulating)<br/><br/></>}
                 </>
               ):null}
               {tokenInfo.totalSupplyNFTs? (
@@ -291,9 +291,9 @@ export default function Home() {
               ):null}
               {metadataInfo?.httpsUrl ?
                 (<>
-                Number of user-addresses holding {metadataInfo?.tokenMetadata?.token?.symbol ?? 'the token'}: 
+                number of user-addresses holding {metadataInfo?.tokenMetadata?.token?.symbol ?? 'the token'}: 
                 {tokenInfo.numberHolders.toLocaleString("en-GB")}<br/><br/>
-                Total number of addresses holding {metadataInfo?.tokenMetadata?.token?.symbol ?? 'the token'} (including smart contracts): 
+                total number of addresses holding {metadataInfo?.tokenMetadata?.token?.symbol ?? 'the token'} (including smart contracts): 
                 {tokenInfo.numberTokenAddresses.toLocaleString("en-GB")}<br/><br/>
               </>):null}
             </>):null}
