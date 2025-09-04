@@ -1,6 +1,6 @@
 export interface tokenInfo {
   genesisSupplyFT:number;
-  genesisTxTimestamp:number;
+  genesisTxTimestamp:number | undefined;
   totalSupplyFT:number;
   reservedSupplyFT:number;
   totalSupplyNFTs:number;

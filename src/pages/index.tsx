@@ -120,7 +120,8 @@ export default function Home() {
       }
       // calculate genesisSupplyFT
       const genesisTx = respJsonGenesisSupply?.transaction[0]?.hash?.substring(2);
-      const genesisTxTimestamp = Number(respJsonGenesisSupply.transaction[0].block_inclusions[0].block.timestamp);
+      const blockTimestamp = respJsonGenesisSupply.transaction[0].block_inclusions?.[0]?.block?.timestamp;
+      const genesisTxTimestamp = blockTimestamp ? Number(blockTimestamp) : undefined;
       let genesisSupplyFT = 0;
       if(respJsonGenesisSupply.transaction[0].outputs){
         genesisSupplyFT = respJsonGenesisSupply.transaction[0].outputs.reduce(
@@ -300,7 +301,7 @@ export default function Home() {
             genesis transaction: <a href={blockExplorerUrl+tokenInfo.genesisTx} target="_blank" rel="noreferrer">
               {tokenInfo.genesisTx}
             </a><br/>
-            timestamp genesis transaction: {formatTimestamp(tokenInfo.genesisTxTimestamp)} <br/><br/>
+            timestamp genesis transaction: {tokenInfo.genesisTxTimestamp ? formatTimestamp(tokenInfo.genesisTxTimestamp) : "N/A"} <br/><br/>
             {metadataInfo ? <>
               authChain length: {tokenInfo.authchainLength} <br/><br/>
               authChain metadata updates: {metadataInfo.authchainUpdates} <br/><br/>
