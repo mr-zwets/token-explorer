@@ -43,6 +43,7 @@ export async function queryAllTokenHolders(tokenId:string){
       ) {
         locking_bytecode
         fungible_token_amount
+        nonfungible_token_capability
       }
     }`);
   const variables = { tokenId: `\\x${tokenId}` }

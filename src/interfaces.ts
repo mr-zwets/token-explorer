@@ -2,6 +2,7 @@ export interface tokenInfo {
   genesisSupplyFT:number;
   genesisTxTimestamp:number | undefined;
   totalSupplyFT:number;
+  circulatingSupplyFT:number;
   reservedSupplyFT:number;
   totalSupplyNFTs:number;
   hasActiveMintingToken:boolean;

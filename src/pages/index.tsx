@@ -152,6 +152,12 @@ export default function Home() {
       const respReservedSupplyFT = respJsonAuthchainLength.transaction[0].authchains?.[0]?.authhead?.identity_output?.[0].fungible_token_amount as string;
       const reservedSupplyFT:number = +respReservedSupplyFT;
 
+      const supplyFtMinusMintingCovenants = respJsonAllTokenHolders.output.reduce(
+        (total:number, output) => output.fungible_token_amount && output.nonfungible_token_capability != "minting" ?
+          total + parseInt(output.fungible_token_amount) : 0,
+        0
+      );
+      const circulatingSupplyFT = supplyFtMinusMintingCovenants - reservedSupplyFT;
       const totalSupplyFT = respJsonAllTokenHolders.output.reduce(
         (total:number, output) => 
           total + parseInt(output.fungible_token_amount ?? "0"),
@@ -164,7 +170,20 @@ export default function Home() {
       ).length;
       const numberTokenAddresses = uniqueLockingBytecodes.size;
 
-      setTokenInfo({genesisSupplyFT, totalSupplyFT, totalSupplyNFTs, hasActiveMintingToken, genesisTx, genesisTxTimestamp, authchainLength, authHead, reservedSupplyFT, numberHolders, numberTokenAddresses});
+      setTokenInfo({
+        genesisSupplyFT,
+        totalSupplyFT,
+        totalSupplyNFTs,
+        hasActiveMintingToken,
+        genesisTx,
+        genesisTxTimestamp,
+        authchainLength,
+        authHead,
+        circulatingSupplyFT,
+        reservedSupplyFT,
+        numberHolders,
+        numberTokenAddresses
+      });
     } catch(error){
       console.log(error);
       alert("The input is not a valid tokenId!")
@@ -236,6 +255,12 @@ export default function Home() {
                   <div>decimals: {metadataInfo.tokenMetadata.token?.decimals}</div><br/>
                 </>): null}
               </>):null}
+              {/* tokenInfo.circulatingSupplyFT? (
+                <>
+                circulating supply: {
+                  displayTokenAmount(tokenInfo.circulatingSupplyFT)
+                } <br/><br/>
+              </>):null */}
               {tokenInfo.genesisSupplyFT? (
                 <>
                 genesis supply: {
