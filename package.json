@@ -11,18 +11,18 @@
   },
   "dependencies": {
     "chaingraph-ts": "^0.2.4",
-    "mainnet-js": "^2.7.19",
-    "next": "^15.5.4",
-    "next-plausible": "^3.12.4",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "mainnet-js": "^2.7.34",
+    "next": "^15.5.9",
+    "next-plausible": "^3.12.5",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
   },
   "devDependencies": {
-    "@types/node": "^24.5.2",
-    "@types/react": "^19.1.14",
-    "@types/react-dom": "^19.1.9",
-    "eslint": "^9.36.0",
-    "eslint-config-next": "^15.5.4",
-    "typescript": "^5.9.2"
+    "@types/node": "^24.10.9",
+    "@types/react": "^19.2.9",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9.39.2",
+    "eslint-config-next": "^15.5.9",
+    "typescript": "^5.9.3"
   }
 }
