@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { queryGenesisSupplyFT, queryActiveMinting, querySupplyNFTs, queryAuthchainLength, queryAllTokenHolders } from '../utils/queryChainGraph'
 import { countUniqueHolders, calculateTotalSupplyFT, calculateCirculatingSupplyFT } from '../utils/calculations'
 import { checkOtrVerified } from '../utils/otrRegistry'
+import { TokenMetadataSchema } from '../utils/bcmrSchema'
 import type { tokenInfo, metadataInfo, tokenMetadata } from '@/interfaces'
 import { CHAINGRAPH_URL, IPFS_GATEWAY } from '@/constants'
 import { TokenSearch, MetadataDisplay, SupplyStats, AuthchainInfo } from '@/components'
@@ -70,6 +71,7 @@ export default function Home() {
     let httpsUrl: string | undefined
     let authchainUpdates = 0
     let metadataHashMatch: boolean | undefined = undefined
+    let isSchemaValid: boolean | undefined = undefined
 
     try {
       const authChain = await BCMR.fetchAuthChainFromChaingraph({
@@ -94,7 +96,18 @@ export default function Home() {
         try {
           console.log("Importing an on-chain resolved BCMR!")
           await BCMR.addMetadataRegistryFromUri(httpsUrl)
-          tokenMetadataResult = BCMR.getTokenInfo(tokenId) as tokenMetadata
+          const rawTokenMetadata = BCMR.getTokenInfo(tokenId)
+
+          // Validate token metadata against BCMR schema
+          const validationResult = TokenMetadataSchema.safeParse(rawTokenMetadata)
+          if (validationResult.success) {
+            tokenMetadataResult = rawTokenMetadata as tokenMetadata
+            isSchemaValid = true
+          } else {
+            console.error('Token metadata schema validation failed:', validationResult.error.issues)
+            tokenMetadataResult = rawTokenMetadata as tokenMetadata
+            isSchemaValid = false
+          }
 
           const response = await fetch(httpsUrl)
           if (!response.ok) {
@@ -118,7 +131,8 @@ export default function Home() {
       tokenMetadata: tokenMetadataResult,
       httpsUrl,
       authchainUpdates,
-      metadataHashMatch
+      metadataHashMatch,
+      isSchemaValid
     }))
   }
 

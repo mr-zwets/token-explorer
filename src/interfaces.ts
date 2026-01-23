@@ -23,6 +23,7 @@ export interface metadataInfo {
   tokenMetadata?: tokenMetadata | undefined
   metadataHashMatch?: boolean
   isOtrVerified?: boolean
+  isSchemaValid?: boolean
 }
 export interface tokenMetadata {
   name: string,
