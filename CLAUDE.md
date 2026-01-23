@@ -41,7 +41,11 @@ The app checks if tokens are registered in the OpenTokenRegistry (https://otr.ca
 
 ### BCMR Schema Validation
 
-Runtime validation of BCMR data uses Zod schemas in `src/utils/bcmrSchema.ts`. This is a manual Zod implementation since Zod cannot validate directly from JSON Schema or TypeScript types. For the official JSON schema, see: https://cashtokens.org/bcmr-v2.schema.json
+Runtime validation of BCMR data uses Zod schemas in `src/utils/bcmrSchema.ts`. This is a manual Zod implementation since Zod cannot validate directly from JSON Schema or TypeScript types. For the official spec, see: https://cashtokens.org/bcmr-v2.schema.json
+
+For the schema definitions, see:
+- TypeScript schema: https://github.com/bitjson/chip-bcmr/blob/master/bcmr-v2.schema.ts
+- JSON schema: https://cashtokens.org/bcmr-v2.schema.json
 
 Validation is applied to:
 - Token metadata from `BCMR.getTokenInfo()` (`TokenMetadataSchema`)
