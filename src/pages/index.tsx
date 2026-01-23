@@ -155,8 +155,12 @@ export default function Home() {
       // parse authHeadAddress
       const authHeadLockingBytecode = respJsonAuthchainLength.transaction[0].authchains?.[0]?.authhead?.identity_output?.[0]?.locking_bytecode as string | undefined;
       let authHeadAddress: string | undefined;
+      let usesAuthGuard = false;
       if (authHeadLockingBytecode) {
-        const authHeadAddressResult = lockingBytecodeToCashAddress({ bytecode: hexToBin(authHeadLockingBytecode.slice(2)), prefix: 'bitcoincash' });
+        const bytecodeHex = authHeadLockingBytecode.slice(2);
+        // P2SH locking bytecode starts with a914 (OP_HASH160 + 20-byte push)
+        usesAuthGuard = bytecodeHex.startsWith('a914');
+        const authHeadAddressResult = lockingBytecodeToCashAddress({ bytecode: hexToBin(bytecodeHex), prefix: 'bitcoincash' });
         authHeadAddress = typeof authHeadAddressResult === 'string' ? undefined : authHeadAddressResult.address;
       }
 
@@ -188,6 +192,7 @@ export default function Home() {
         authchainLength,
         authHead,
         authHeadAddress,
+        usesAuthGuard,
         circulatingSupplyFT,
         reservedSupplyFT,
         numberHolders,
@@ -343,8 +348,11 @@ export default function Home() {
                 {tokenInfo.authHead}
               </a><br/>
               {tokenInfo.authHeadAddress ? <>
-                authHead address: {tokenInfo.authHeadAddress}
-              </> : null}<br/><br/>
+                authHead address: {tokenInfo.authHeadAddress}<br/>
+              </> : null}
+              {tokenInfo.usesAuthGuard ? <>
+                uses authGuard standard: ✅<br/>
+              </> : null}<br/>
               {metadataInfo?.httpsUrl ?
               (<>
                 location metadata: 

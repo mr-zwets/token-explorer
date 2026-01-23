@@ -10,6 +10,7 @@ export interface tokenInfo {
   authchainLength?: number
   authHead?: string
   authHeadAddress?: string
+  usesAuthGuard?: boolean
   numberHolders: number
   numberTokenAddresses: number
 }
