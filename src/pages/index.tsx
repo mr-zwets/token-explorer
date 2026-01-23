@@ -1,6 +1,7 @@
 import Head from 'next/head'
 import styles from '@/styles/Home.module.css'
-import { BCMR, utf8ToBin, sha256, binToHex } from 'mainnet-js'
+import { BCMR } from '@mainnet-cash/bcmr'
+import { utf8ToBin, sha256, binToHex } from 'mainnet-js'
 import { useEffect, useState } from 'react'
 import { queryGenesisSupplyFT, queryActiveMinting, querySupplyNFTs, queryAuthchainLength, queryAllTokenHolders } from '../utils/queryChainGraph';
 import { formatTimestamp } from '@/utils/utils'

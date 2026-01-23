@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@mainnet-cash/bcmr':
+        specifier: 2.7.34
+        version: 2.7.34
       chaingraph-ts:
         specifier: ^0.2.4
         version: 0.2.4(typescript@5.9.3)
@@ -287,6 +290,9 @@ packages:
     engines: {node: ^18.17.0 || ^20.3.0 || >=21.0.0}
     cpu: [x64]
     os: [win32]
+
+  '@mainnet-cash/bcmr@2.7.34':
+    resolution: {integrity: sha512-Cbbe1bczZBuQ9tPTz/urLitP3eovdDKjWUZ+vEqlFHnapMdBcRMO2vOH5QYVdx/UxTwvLZCwNBjr7WC9hR9S5A==}
 
   '@monsterbitar/isomorphic-ws@5.3.1':
     resolution: {integrity: sha512-BWfWUffbg3uO4K6Cyokg9ff43lPaXAOZcCnNe1lcjCjUMDVrRAb5qEHG5qeJp3ud2SPYbORaNsls5as6SR3oig==}
@@ -1913,6 +1919,14 @@ snapshots:
 
   '@img/sharp-win32-x64@0.34.4':
     optional: true
+
+  '@mainnet-cash/bcmr@2.7.34':
+    dependencies:
+      mainnet-js: 2.7.34
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - utf-8-validate
 
   '@monsterbitar/isomorphic-ws@5.3.1(ws@8.18.3)':
     dependencies:
