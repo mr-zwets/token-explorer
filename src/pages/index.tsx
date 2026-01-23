@@ -3,182 +3,210 @@ import styles from '@/styles/Home.module.css'
 import { BCMR } from '@mainnet-cash/bcmr'
 import { utf8ToBin, sha256, binToHex, hexToBin, lockingBytecodeToCashAddress } from '@bitauth/libauth'
 import { useEffect, useState } from 'react'
-import { queryGenesisSupplyFT, queryActiveMinting, querySupplyNFTs, queryAuthchainLength, queryAllTokenHolders } from '../utils/queryChainGraph';
-import { formatTimestamp } from '@/utils/utils'
+import { queryGenesisSupplyFT, queryActiveMinting, querySupplyNFTs, queryAuthchainLength, queryAllTokenHolders } from '../utils/queryChainGraph'
 import type { tokenInfo, metadataInfo, tokenMetadata } from '@/interfaces'
-import { BLOCK_EXPLORER_URL, CHAINGRAPH_URL, IPFS_GATEWAY } from '@/constants'
+import { CHAINGRAPH_URL, IPFS_GATEWAY } from '@/constants'
+import { TokenSearch, MetadataDisplay, SupplyStats, AuthchainInfo } from '@/components'
 
 export default function Home() {
-  const [tokenId, setTokenId] = useState<string>("");
-  const [isLoadingTokenInfo, setIsLoadingTokenInfo] = useState<boolean>(false);
-  const [tokenInfo, setTokenInfo] = useState<tokenInfo>();
-  const [metadataInfo, setMetadataInfo] = useState<metadataInfo>();
+  const [tokenId, setTokenId] = useState<string>("")
+  const [isLoadingTokenInfo, setIsLoadingTokenInfo] = useState<boolean>(false)
+  const [tokenInfo, setTokenInfo] = useState<tokenInfo>()
+  const [metadataInfo, setMetadataInfo] = useState<metadataInfo>()
   const [tokenIconUri, setTokenIconUri] = useState<string>("")
 
-  const handleChange = (e:any) => {
-    if((e.target as HTMLInputElement)){
-      const tokenId = e.target.value;
-      setTokenId(tokenId);
-      const url = new URL(window.location.href);
-      const params = new URLSearchParams(url.search);
-      params.set("tokenId", tokenId);
-      window.history.replaceState({}, "", `${location.pathname}?${params}`);
-    }
-  };
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    const params = new URLSearchParams(url.search)
+    const readTokenId = params.get("tokenId")
+    if (!readTokenId) return
+    setTokenId(readTokenId)
+    setIsLoadingTokenInfo(true)
+    lookUpTokenData(readTokenId)
+    fetchMetadata(readTokenId)
+  }, [])
 
   useEffect(() => {
-    const url = new URL(window.location.href);
-    const params = new URLSearchParams(url.search);
-    const readTokenId = params.get("tokenId");
-    if(!readTokenId) return
-    setTokenId(readTokenId);
-    setIsLoadingTokenInfo(true);
-    lookUpTokenData(readTokenId);
-    fetchMetadata(readTokenId);
-  },[]);
-
-  // Sets tokenIconUri when metadataInfo changes
-  useEffect(() => {
-    (async () => {
-      const imageOrIconUri = metadataInfo?.tokenMetadata?.uris?.image ?? metadataInfo?.tokenMetadata?.uris?.icon
-      if(imageOrIconUri) {
-        if (!imageOrIconUri?.startsWith('ipfs://')) return setTokenIconUri(imageOrIconUri)
-        const path = imageOrIconUri.replace('ipfs://','')
+    const imageOrIconUri = metadataInfo?.tokenMetadata?.uris?.image ?? metadataInfo?.tokenMetadata?.uris?.icon
+    if (imageOrIconUri) {
+      if (!imageOrIconUri.startsWith('ipfs://')) {
+        setTokenIconUri(imageOrIconUri)
+      } else {
+        const path = imageOrIconUri.replace('ipfs://', '')
         setTokenIconUri(IPFS_GATEWAY + path)
-      } 
-    })()
+      }
+    }
   }, [metadataInfo])
 
   useEffect(() => {
-    if(tokenInfo) setIsLoadingTokenInfo(false)
+    if (tokenInfo) setIsLoadingTokenInfo(false)
   }, [tokenInfo])
 
-  async function clearExistingInfo(){
-    setTokenInfo(undefined);
+  function clearExistingInfo() {
+    setTokenInfo(undefined)
     setMetadataInfo(undefined)
     setTokenIconUri("")
   }
 
-  async function fetchMetadata(tokenId:string){
-    let metadataInfo:tokenMetadata | undefined;
-    let metaDataLocation= "";
-    let httpsUrl;
-    let authchainUpdates= 0;
-    let metadataHashMatch = undefined;
-    try{
+  function handleSearch() {
+    clearExistingInfo()
+    setIsLoadingTokenInfo(true)
+    lookUpTokenData(tokenId)
+    fetchMetadata(tokenId)
+  }
+
+  async function fetchMetadata(tokenId: string) {
+    let tokenMetadataResult: tokenMetadata | undefined
+    let metaDataLocation = ""
+    let httpsUrl
+    let authchainUpdates = 0
+    let metadataHashMatch: boolean | undefined = undefined
+
+    try {
       const authChain = await BCMR.fetchAuthChainFromChaingraph({
         chaingraphUrl: CHAINGRAPH_URL,
         transactionHash: tokenId
-      });
+      })
       console.log(authChain)
-      if(authChain.at(-1)){
-        authchainUpdates = authChain.length;
-        const bcmrLocation = authChain.at(-1)?.uris[0];
-        httpsUrl = authChain.at(-1)?.httpsUrl;
-        if(!bcmrLocation || !httpsUrl) return;
-        const providedHash = authChain.at(-1)?.contentHash;
-        // use own gateway
-        if(bcmrLocation.startsWith("ipfs://")) httpsUrl = bcmrLocation.replace("ipfs://", IPFS_GATEWAY);
-        metaDataLocation = bcmrLocation;
 
-        // fetch httpsUrl of BCMR for tokenInfo
-        try{
-          console.log("Importing an on-chain resolved BCMR!");
-          await BCMR.addMetadataRegistryFromUri(httpsUrl);
-          metadataInfo = BCMR.getTokenInfo(tokenId) as tokenMetadata;
-          const reponse = await fetch(httpsUrl);
-          if(!reponse.ok){
-            metadataHashMatch = false;
-            throw new Error(`Failed to fetch BCMR content from ${httpsUrl}: ${reponse.status} ${reponse.statusText}`);
+      const latestAuthChainEntry = authChain.at(-1)
+      if (latestAuthChainEntry) {
+        authchainUpdates = authChain.length
+        const bcmrLocation = latestAuthChainEntry.uris[0]
+        httpsUrl = latestAuthChainEntry.httpsUrl
+        if (!bcmrLocation || !httpsUrl) return
+
+        const providedHash = latestAuthChainEntry.contentHash
+        if (bcmrLocation.startsWith("ipfs://")) {
+          httpsUrl = bcmrLocation.replace("ipfs://", IPFS_GATEWAY)
+        }
+        metaDataLocation = bcmrLocation
+
+        try {
+          console.log("Importing an on-chain resolved BCMR!")
+          await BCMR.addMetadataRegistryFromUri(httpsUrl)
+          tokenMetadataResult = BCMR.getTokenInfo(tokenId) as tokenMetadata
+
+          const response = await fetch(httpsUrl)
+          if (!response.ok) {
+            metadataHashMatch = false
+            throw new Error(`Failed to fetch BCMR content from ${httpsUrl}: ${response.status} ${response.statusText}`)
           }
-          const bcmrContent = await reponse.text();
-          const contentHash = binToHex(sha256.hash(utf8ToBin(bcmrContent)));
-          metadataHashMatch = contentHash === providedHash;
-        }catch(e){ console.log(e) }
+          const bcmrContent = await response.text()
+          const contentHash = binToHex(sha256.hash(utf8ToBin(bcmrContent)))
+          metadataHashMatch = contentHash === providedHash
+        } catch (e) {
+          console.log(e)
+        }
       }
-    } catch(error){ console.log(error) }
+    } catch (error) {
+      console.log(error)
+    }
 
-    const newMetadataInfo:metadataInfo = {...tokenInfo, metaDataLocation, tokenMetadata:metadataInfo, httpsUrl, authchainUpdates, metadataHashMatch}
+    const newMetadataInfo: metadataInfo = {
+      metaDataLocation,
+      tokenMetadata: tokenMetadataResult,
+      httpsUrl,
+      authchainUpdates,
+      metadataHashMatch
+    }
 
-    setMetadataInfo(newMetadataInfo);
+    setMetadataInfo(newMetadataInfo)
   }
 
-  const lookUpTokenData = async (tokenId:string) => {
-    try{
-      const promiseGenesisSupply = queryGenesisSupplyFT(tokenId);
-      const promiseAllTokenHolders = queryAllTokenHolders(tokenId);
-      const promiseSupplyNFTs = querySupplyNFTs(tokenId);
-      const promiseActiveMinting = queryActiveMinting(tokenId);
-      const promiseAuthchainLength = queryAuthchainLength(tokenId);
-      const [respJsonGenesisSupply,respJsonAllTokenHolders,respJsonSupplyNFTs,respJsonActiveMinting,respJsonAuthchainLength] = await Promise.all(
-        [promiseGenesisSupply,promiseAllTokenHolders,promiseSupplyNFTs,promiseActiveMinting,promiseAuthchainLength]
-      );
-      if(!respJsonGenesisSupply || !respJsonAllTokenHolders || !respJsonSupplyNFTs || !respJsonActiveMinting || !respJsonAuthchainLength){
+  async function lookUpTokenData(tokenId: string) {
+    try {
+      const [
+        respJsonGenesisSupply,
+        respJsonAllTokenHolders,
+        respJsonSupplyNFTs,
+        respJsonActiveMinting,
+        respJsonAuthchainLength
+      ] = await Promise.all([
+        queryGenesisSupplyFT(tokenId),
+        queryAllTokenHolders(tokenId),
+        querySupplyNFTs(tokenId),
+        queryActiveMinting(tokenId),
+        queryAuthchainLength(tokenId)
+      ])
+
+      if (!respJsonGenesisSupply || !respJsonAllTokenHolders || !respJsonSupplyNFTs || !respJsonActiveMinting || !respJsonAuthchainLength) {
         throw new Error("Error in Chaingraph fetches")
       }
-      // calculate genesisSupplyFT
-      const genesisTx = respJsonGenesisSupply?.transaction[0]?.hash?.substring(2);
-      const blockTimestamp = respJsonGenesisSupply.transaction[0].block_inclusions?.[0]?.block?.timestamp;
-      const genesisTxTimestamp = blockTimestamp ? Number(blockTimestamp) : undefined;
-      let genesisSupplyFT = 0;
-      if(respJsonGenesisSupply.transaction[0].outputs){
-        genesisSupplyFT = respJsonGenesisSupply.transaction[0].outputs.reduce(
-          (total:number, output) => 
-            total + parseInt(output?.fungible_token_amount ?? '0'),
+
+      // Parse genesis supply
+      const genesisTransaction = respJsonGenesisSupply.transaction[0]
+      const genesisTx = genesisTransaction?.hash?.substring(2)
+      const blockTimestamp = genesisTransaction?.block_inclusions?.[0]?.block?.timestamp
+      const genesisTxTimestamp = blockTimestamp ? Number(blockTimestamp) : undefined
+
+      let genesisSupplyFT = 0
+      if (genesisTransaction?.outputs) {
+        genesisSupplyFT = genesisTransaction.outputs.reduce(
+          (total: number, output) => total + parseInt(output?.fungible_token_amount ?? '0'),
           0
-        );
+        )
       }
-      // calculate totalSupplyNFTs
-      let totalSupplyNFTs = respJsonSupplyNFTs.output.length;
-      let indexOffset = 0;
-      // limit of items returned by chaingraphquery is 5000
+
+      // Calculate totalSupplyNFTs with pagination
+      let totalSupplyNFTs = respJsonSupplyNFTs.output.length
+      let indexOffset = 0
       let fullListNftHolders = respJsonSupplyNFTs.output
-      while (totalSupplyNFTs == 5000) {
-        indexOffset += 1;
-        const respJsonSupplyNFTs2 = await querySupplyNFTs(tokenId, 5000 * indexOffset);
-        if(!respJsonSupplyNFTs2) throw new Error("Error in querySupplyNFTs")
-        fullListNftHolders = fullListNftHolders.concat(respJsonSupplyNFTs2.output);
-        totalSupplyNFTs += respJsonSupplyNFTs2.output.length;
+
+      while (totalSupplyNFTs === 5000) {
+        indexOffset += 1
+        const respJsonSupplyNFTs2 = await querySupplyNFTs(tokenId, 5000 * indexOffset)
+        if (!respJsonSupplyNFTs2) throw new Error("Error in querySupplyNFTs")
+        fullListNftHolders = fullListNftHolders.concat(respJsonSupplyNFTs2.output)
+        totalSupplyNFTs += respJsonSupplyNFTs2.output.length
       }
-      // parse hasActiveMintingToken
-      const hasActiveMintingToken = Boolean(respJsonActiveMinting.output.length);
 
-      // parse authchain data with intermediate variables for cleaner access
-      const authchainData = respJsonAuthchainLength.transaction[0]?.authchains?.[0];
-      const authheadData = authchainData?.authhead;
-      const identityOutput = authheadData?.identity_output?.[0];
+      // Parse hasActiveMintingToken
+      const hasActiveMintingToken = Boolean(respJsonActiveMinting.output.length)
 
-      const authchainLength = authchainData?.authchain_length ?? 0;
-      const authHead = authheadData?.hash?.slice(2) ?? '';
-      const reservedSupplyFT = +(identityOutput?.fungible_token_amount ?? 0);
-      const authHeadLockingBytecode = identityOutput?.locking_bytecode as string | undefined;
-      let authHeadAddress: string | undefined;
-      let usesAuthGuard = false;
+      // Parse authchain data with intermediate variables
+      const authchainData = respJsonAuthchainLength.transaction[0]?.authchains?.[0]
+      const authheadData = authchainData?.authhead
+      const identityOutput = authheadData?.identity_output?.[0]
+
+      const authchainLength = authchainData?.authchain_length ?? 0
+      const authHead = authheadData?.hash?.slice(2) ?? ''
+      const reservedSupplyFT = +(identityOutput?.fungible_token_amount ?? 0)
+      const authHeadLockingBytecode = identityOutput?.locking_bytecode as string | undefined
+
+      let authHeadAddress: string | undefined
+      let usesAuthGuard = false
       if (authHeadLockingBytecode) {
-        const bytecodeHex = authHeadLockingBytecode.slice(2);
-        // P2SH locking bytecode starts with a914 (OP_HASH160 + 20-byte push)
-        usesAuthGuard = bytecodeHex.startsWith('a914');
-        const authHeadAddressResult = lockingBytecodeToCashAddress({ bytecode: hexToBin(bytecodeHex), prefix: 'bitcoincash' });
-        authHeadAddress = typeof authHeadAddressResult === 'string' ? undefined : authHeadAddressResult.address;
+        const bytecodeHex = authHeadLockingBytecode.slice(2)
+        usesAuthGuard = bytecodeHex.startsWith('a914')
+        const authHeadAddressResult = lockingBytecodeToCashAddress({
+          bytecode: hexToBin(bytecodeHex),
+          prefix: 'bitcoincash'
+        })
+        authHeadAddress = typeof authHeadAddressResult === 'string' ? undefined : authHeadAddressResult.address
       }
 
+      // Calculate supply stats
       const supplyFtMinusMintingCovenants = respJsonAllTokenHolders.output.reduce(
-        (total:number, output) => output.fungible_token_amount && output.nonfungible_token_capability != "minting" ?
-          total + parseInt(output.fungible_token_amount) : 0,
+        (total: number, output) =>
+          output.fungible_token_amount && output.nonfungible_token_capability !== "minting"
+            ? total + parseInt(output.fungible_token_amount)
+            : 0,
         0
-      );
-      const circulatingSupplyFT = supplyFtMinusMintingCovenants - reservedSupplyFT;
+      )
+      const circulatingSupplyFT = supplyFtMinusMintingCovenants - reservedSupplyFT
       const totalSupplyFT = respJsonAllTokenHolders.output.reduce(
-        (total:number, output) => 
-          total + parseInt(output.fungible_token_amount ?? "0"),
+        (total: number, output) => total + parseInt(output.fungible_token_amount ?? "0"),
         0
-      );
-      const listHoldingAddresses = genesisSupplyFT ? respJsonAllTokenHolders.output : fullListNftHolders 
-      const uniqueLockingBytecodes = new Set(listHoldingAddresses.map(output => output.locking_bytecode.slice(2)));
-      const numberHolders = Array.from(uniqueLockingBytecodes).filter(locking_bytecode =>
-        locking_bytecode.startsWith('76a914')
-      ).length;
-      const numberTokenAddresses = uniqueLockingBytecodes.size;
+      )
+
+      // Calculate holder stats
+      const listHoldingAddresses = genesisSupplyFT ? respJsonAllTokenHolders.output : fullListNftHolders
+      const uniqueLockingBytecodes = new Set(listHoldingAddresses.map(output => output.locking_bytecode.slice(2)))
+      const numberHolders = Array.from(uniqueLockingBytecodes).filter(bytecode =>
+        bytecode.startsWith('76a914')
+      ).length
+      const numberTokenAddresses = uniqueLockingBytecodes.size
 
       setTokenInfo({
         genesisSupplyFT,
@@ -195,19 +223,12 @@ export default function Home() {
         reservedSupplyFT,
         numberHolders,
         numberTokenAddresses
-      });
-    } catch(error){
-      console.log(error);
+      })
+    } catch (error) {
+      console.log(error)
       alert("The input is not a valid tokenId!")
-      setTokenInfo(undefined);
+      setTokenInfo(undefined)
     }
-  }
-
-  const toPercentage = (decimalNumber:number) => (Math.round(decimalNumber *10000)/100).toFixed(2)
-
-  const displayTokenAmount = (amount:number) => {
-    const amountDecimals = amount / (10 ** (metadataInfo?.tokenMetadata?.token?.decimals ?? 0))
-    return amountDecimals.toLocaleString("en-GB") + ' ' + (metadataInfo?.tokenMetadata?.token?.symbol ?? '')
   }
 
   return (
@@ -220,152 +241,34 @@ export default function Home() {
       </Head>
       <main className={styles.main}>
         <h1 className={styles.title}>BCMR Token Explorer</h1>
-        <div style={{display:"block"}}>      
-          <h2 className={styles.description}>Enter tokenId: </h2>
-          <input
-             className={styles.description}
-             style={{width:"80vw", maxWidth:"570px",padding:"10px 20px"}}
-            type="text"
-            id="tokenId"
-            value={tokenId}
-            onChange={(e) => handleChange(e)}
-            onKeyDown ={(e) => {
-              if(e.key === 'Enter'){
-                clearExistingInfo()
-                setIsLoadingTokenInfo(true);
-                lookUpTokenData(tokenId);
-                fetchMetadata(tokenId);
-              } 
-            }}
-          ></input>
-          { isLoadingTokenInfo && !tokenInfo && <div className={styles.description} style={{marginTop:"20px"}}>
-              loading on-chain tokenInfo...
-          </div>}
+        <div style={{ display: "block" }}>
+          <TokenSearch
+            tokenId={tokenId}
+            isLoading={isLoadingTokenInfo}
+            hasTokenInfo={!!tokenInfo}
+            onTokenIdChange={setTokenId}
+            onSearch={handleSearch}
+          />
 
-          {tokenInfo && <div style={{marginTop:"20px", overflowWrap:"anywhere",maxWidth:"570px"}}>
-            <div className={styles.description}>
-
-              {metadataInfo?.metaDataLocation !== undefined? (
-                metadataInfo.metaDataLocation == ""?
-                (<> This token has no BCMR metadata linked on-chain <br/><br/> </>) : null
-              ):<> loading metadata... <br/><br/></>}
-              {metadataInfo && metadataInfo.tokenMetadata? (
-                <>
-                name: {metadataInfo.tokenMetadata.name} <br/><br/>
-              </>):null}
-              token type: 
-                {(tokenInfo.genesisSupplyFT && !tokenInfo.totalSupplyNFTs)? " Fungible Token":null} 
-                {(!tokenInfo.genesisSupplyFT && tokenInfo.totalSupplyNFTs)? " NFTs":null}
-                {(tokenInfo.genesisSupplyFT && tokenInfo.totalSupplyNFTs)? " Both Fugible & Non-Fungible tokens":null} 
-              <br/><br/>
-              {metadataInfo && metadataInfo.tokenMetadata? (
-                <>
-                {metadataInfo.tokenMetadata.token? (<>
-                  <div>symbol: {metadataInfo.tokenMetadata.token?.symbol}</div><br/>
-                </>): null}
-                {metadataInfo.tokenMetadata.token?.decimals? (<>
-                  <div>decimals: {metadataInfo.tokenMetadata.token?.decimals}</div><br/>
-                </>): null}
-              </>):null}
-              {/* tokenInfo.circulatingSupplyFT? (
-                <>
-                circulating supply: {
-                  displayTokenAmount(tokenInfo.circulatingSupplyFT)
-                } <br/><br/>
-              </>):null */}
-              {tokenInfo.genesisSupplyFT? (
-                <>
-                genesis supply: {
-                  displayTokenAmount(tokenInfo.genesisSupplyFT)
-                } <br/><br/>
-              </>):null}
-              {tokenInfo.totalSupplyNFTs? (
-                <>total amount NFTs: {tokenInfo.totalSupplyNFTs.toLocaleString("en-GB")} <br/><br/></>
-              ):null}
-              {metadataInfo && metadataInfo.tokenMetadata? (
-                <>
-                  description: {metadataInfo?.tokenMetadata?.description} <br/><br/>
-                  {metadataInfo?.tokenMetadata?.uris ? <>
-                    web url: {metadataInfo.tokenMetadata.uris?.web? <a href={metadataInfo.tokenMetadata.uris?.web} target='_blank' rel="noreferrer" style={{display: "inline-block", color: "#00E"}}>
-                      {metadataInfo.tokenMetadata.uris?.web}
-                    </a>: "none"}<br/><br/>
-                      other uris: {Object.keys(metadataInfo.tokenMetadata.uris).filter(uri => uri != "icon" && uri != "web").length ?
-                        Object.keys(metadataInfo.tokenMetadata.uris).filter(uri => uri != "icon" && uri != "web").map((uriKey, index, array) =>
-                          <span key={uriKey}>
-                            <a href={metadataInfo?.tokenMetadata?.uris[uriKey]} target='_blank' rel="noreferrer" style={{ display: "inline-block", color: "#00E" }}>{uriKey}</a>
-                            {(index != array.length - 1) ? ", " : null}
-                          </span>
-                        ) : "none"} <br /><br />
-                  </>:null}
-                {metadataInfo.tokenMetadata.uris?.icon && tokenIconUri ? <>
-                <span style={{ verticalAlign:"top"}}>icon: </span>
-                <div style={{ display:"flex", justifyContent: "center", marginBottom:"20px"}}>
-                  <img className='tokenImage' style={{ width:"60vw", maxWidth: "400px"}} src={tokenIconUri} alt="tokenIcon"/>
-                  <br/><br/>
-                </div></>:null}
-                {tokenInfo.genesisSupplyFT? (
-                <>
-                  {tokenInfo.genesisSupplyFT != tokenInfo.totalSupplyFT ? (
-                  <>
-                  <span> burned: {displayTokenAmount(tokenInfo.genesisSupplyFT - tokenInfo.totalSupplyFT)}</span>
-                  <div>supply excluding burns: {displayTokenAmount(tokenInfo.totalSupplyFT)} </div><br/>
-                  </>
-                  ): null}
-                  {tokenInfo.reservedSupplyFT? (
-                    <>
-                      circulating supply: {displayTokenAmount(tokenInfo.totalSupplyFT - tokenInfo.reservedSupplyFT)}
-                      {` (${toPercentage((tokenInfo.totalSupplyFT - tokenInfo.reservedSupplyFT)/tokenInfo.totalSupplyFT)}%)`}<br/><br/>
-                      reserved supply: {displayTokenAmount(tokenInfo.reservedSupplyFT)}
-                      {` (${toPercentage((tokenInfo.reservedSupplyFT)/tokenInfo.totalSupplyFT)}%)`}<br/><br/>
-                    </>
-                  ):
-                  <>No reserved supply (full supply circulating)<br/><br/></>}
-                </>
-              ):null}
-              {tokenInfo.totalSupplyNFTs? (
-                <>
-                  has active minting NFT: {tokenInfo.hasActiveMintingToken? "yes":"no"} <br/><br/>
-                </>
-              ):null}
-              {metadataInfo?.httpsUrl ?
-                (<>
-                number of user-addresses holding {metadataInfo?.tokenMetadata?.token?.symbol ?? 'the token'}: 
-                {tokenInfo.numberHolders.toLocaleString("en-GB")}<br/><br/>
-                total number of addresses holding {metadataInfo?.tokenMetadata?.token?.symbol ?? 'the token'} (including smart contracts): 
-                {tokenInfo.numberTokenAddresses.toLocaleString("en-GB")}<br/><br/>
-              </>):null}
-            </>):null}
-            genesis transaction: <a href={BLOCK_EXPLORER_URL+tokenInfo.genesisTx} target="_blank" rel="noreferrer">
-              {tokenInfo.genesisTx}
-            </a><br/>
-            timestamp genesis transaction: {tokenInfo.genesisTxTimestamp ? formatTimestamp(tokenInfo.genesisTxTimestamp) : "N/A"} <br/><br/>
-            {metadataInfo ? <>
-              authChain length: {tokenInfo.authchainLength} <br/><br/>
-              authChain metadata updates: {metadataInfo.authchainUpdates} <br/><br/>
-              authHead txid: <a href={BLOCK_EXPLORER_URL+tokenInfo.authHead} target="_blank" rel="noreferrer">
-                {tokenInfo.authHead}
-              </a><br/>
-              {tokenInfo.authHeadAddress ? <>
-                authHead address: {tokenInfo.authHeadAddress}<br/>
-              </> : null}
-              {tokenInfo.usesAuthGuard ? <>
-                uses authGuard standard: ✅<br/>
-              </> : null}<br/>
-              {metadataInfo?.httpsUrl ?
-              (<>
-                location metadata: 
-                <a href={metadataInfo.httpsUrl} target="_blank" rel="noreferrer" style={{maxWidth: "570px", wordBreak: "break-all", display: "inline-block", color: "#00E"}}>
-                  {metadataInfo.metaDataLocation}
-                </a><br/><br/>
-              </>):null}
-              {metadataInfo?.authchainUpdates? <>
-                metadata hash matches: {metadataInfo.metadataHashMatch? "✅": metadataInfo.metadataHashMatch == false ? "❌" : "❔"}  <br/><br/>
-              </> : null}
-            </> : null}
-          </div>
-        </div>}
+          {tokenInfo && (
+            <div style={{ marginTop: "20px", overflowWrap: "anywhere", maxWidth: "570px" }}>
+              <div className={styles.description}>
+                <MetadataDisplay
+                  metadataInfo={metadataInfo}
+                  tokenIconUri={tokenIconUri}
+                />
+                <SupplyStats
+                  tokenInfo={tokenInfo}
+                  metadataInfo={metadataInfo}
+                />
+                <AuthchainInfo
+                  tokenInfo={tokenInfo}
+                  metadataInfo={metadataInfo}
+                />
+              </div>
+            </div>
+          )}
         </div>
-        
       </main>
     </>
   )
