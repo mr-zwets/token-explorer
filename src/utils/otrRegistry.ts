@@ -34,11 +34,9 @@ export async function checkOtrVerified(tokenId: string): Promise<boolean> {
     otrRegistry = await otrRegistryPromise
   }
 
-  console.log(otrRegistry)
   if (!otrRegistry?.identities) {
     return false
   }
 
-  console.log(tokenId in otrRegistry.identities)
   return tokenId in otrRegistry.identities
 }

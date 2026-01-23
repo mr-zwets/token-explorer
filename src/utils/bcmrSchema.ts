@@ -55,11 +55,13 @@ export const NftCategoryFieldSchema = z.record(
 )
 
 // NFT category
+// parse.bytecode is optional: SequentialNftCollection has only types,
+// ParsableNftCollection has bytecode + types
 export const NftCategorySchema = z.object({
   description: z.string().optional(),
   fields: NftCategoryFieldSchema.optional(),
   parse: z.object({
-    bytecode: z.string(),
+    bytecode: z.string().optional(),
     types: z.record(z.string(), NftTypeSchema),
   }),
 })
