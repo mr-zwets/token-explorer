@@ -10,9 +10,9 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@bitauth/libauth": "^3.0.0",
     "@mainnet-cash/bcmr": "2.7.34",
     "chaingraph-ts": "^0.2.4",
-    "mainnet-js": "^2.7.34",
     "next": "^15.5.9",
     "next-plausible": "^3.12.5",
     "react": "^19.2.3",

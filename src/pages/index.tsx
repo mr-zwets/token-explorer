@@ -1,7 +1,7 @@
 import Head from 'next/head'
 import styles from '@/styles/Home.module.css'
 import { BCMR } from '@mainnet-cash/bcmr'
-import { utf8ToBin, sha256, binToHex } from 'mainnet-js'
+import { utf8ToBin, sha256, binToHex, hexToBin, lockingBytecodeToCashAddress } from '@bitauth/libauth'
 import { useEffect, useState } from 'react'
 import { queryGenesisSupplyFT, queryActiveMinting, querySupplyNFTs, queryAuthchainLength, queryAllTokenHolders } from '../utils/queryChainGraph';
 import { formatTimestamp } from '@/utils/utils'
@@ -152,6 +152,13 @@ export default function Home() {
       // parse reservedSupplyFT
       const respReservedSupplyFT = respJsonAuthchainLength.transaction[0].authchains?.[0]?.authhead?.identity_output?.[0].fungible_token_amount as string;
       const reservedSupplyFT:number = +respReservedSupplyFT;
+      // parse authHeadAddress
+      const authHeadLockingBytecode = respJsonAuthchainLength.transaction[0].authchains?.[0]?.authhead?.identity_output?.[0]?.locking_bytecode as string | undefined;
+      let authHeadAddress: string | undefined;
+      if (authHeadLockingBytecode) {
+        const authHeadAddressResult = lockingBytecodeToCashAddress({ bytecode: hexToBin(authHeadLockingBytecode.slice(2)), prefix: 'bitcoincash' });
+        authHeadAddress = typeof authHeadAddressResult === 'string' ? undefined : authHeadAddressResult.address;
+      }
 
       const supplyFtMinusMintingCovenants = respJsonAllTokenHolders.output.reduce(
         (total:number, output) => output.fungible_token_amount && output.nonfungible_token_capability != "minting" ?
@@ -180,6 +187,7 @@ export default function Home() {
         genesisTxTimestamp,
         authchainLength,
         authHead,
+        authHeadAddress,
         circulatingSupplyFT,
         reservedSupplyFT,
         numberHolders,
@@ -334,6 +342,9 @@ export default function Home() {
               authHead txid: <a href={blockExplorerUrl+tokenInfo.authHead} target="_blank" rel="noreferrer">
                 {tokenInfo.authHead}
               </a><br/>
+              {tokenInfo.authHeadAddress ? <>
+                authHead address: {tokenInfo.authHeadAddress}
+              </> : null}<br/><br/>
               {metadataInfo?.httpsUrl ?
               (<>
                 location metadata: 

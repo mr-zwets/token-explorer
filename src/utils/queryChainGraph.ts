@@ -109,6 +109,7 @@ export async function queryAuthchainLength(tokenId:string){
           hash,
           identity_output {
             fungible_token_amount
+            locking_bytecode
           }
         },
         authchain_length

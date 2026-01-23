@@ -9,6 +9,7 @@ export interface tokenInfo {
   genesisTx: string,
   authchainLength?: number
   authHead?: string
+  authHeadAddress?: string
   numberHolders: number
   numberTokenAddresses: number
 }

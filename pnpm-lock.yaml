@@ -8,15 +8,15 @@ importers:
 
   .:
     dependencies:
+      '@bitauth/libauth':
+        specifier: ^3.0.0
+        version: 3.0.0
       '@mainnet-cash/bcmr':
         specifier: 2.7.34
         version: 2.7.34
       chaingraph-ts:
         specifier: ^0.2.4
         version: 0.2.4(typescript@5.9.3)
-      mainnet-js:
-        specifier: ^2.7.34
-        version: 2.7.34
       next:
         specifier: ^15.5.9
         version: 15.5.9(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
