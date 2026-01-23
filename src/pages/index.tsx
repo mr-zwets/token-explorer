@@ -4,6 +4,7 @@ import { BCMR } from '@mainnet-cash/bcmr'
 import { utf8ToBin, sha256, binToHex, hexToBin, lockingBytecodeToCashAddress } from '@bitauth/libauth'
 import { useEffect, useState } from 'react'
 import { queryGenesisSupplyFT, queryActiveMinting, querySupplyNFTs, queryAuthchainLength, queryAllTokenHolders } from '../utils/queryChainGraph'
+import { countUniqueHolders, calculateTotalSupplyFT, calculateCirculatingSupplyFT } from '../utils/calculations'
 import type { tokenInfo, metadataInfo, tokenMetadata } from '@/interfaces'
 import { CHAINGRAPH_URL, IPFS_GATEWAY } from '@/constants'
 import { TokenSearch, MetadataDisplay, SupplyStats, AuthchainInfo } from '@/components'
@@ -187,26 +188,12 @@ export default function Home() {
       }
 
       // Calculate supply stats
-      const supplyFtMinusMintingCovenants = respJsonAllTokenHolders.output.reduce(
-        (total: number, output) =>
-          output.fungible_token_amount && output.nonfungible_token_capability !== "minting"
-            ? total + parseInt(output.fungible_token_amount)
-            : 0,
-        0
-      )
-      const circulatingSupplyFT = supplyFtMinusMintingCovenants - reservedSupplyFT
-      const totalSupplyFT = respJsonAllTokenHolders.output.reduce(
-        (total: number, output) => total + parseInt(output.fungible_token_amount ?? "0"),
-        0
-      )
+      const totalSupplyFT = calculateTotalSupplyFT(respJsonAllTokenHolders.output)
+      const circulatingSupplyFT = calculateCirculatingSupplyFT(respJsonAllTokenHolders.output, reservedSupplyFT)
 
       // Calculate holder stats
       const listHoldingAddresses = genesisSupplyFT ? respJsonAllTokenHolders.output : fullListNftHolders
-      const uniqueLockingBytecodes = new Set(listHoldingAddresses.map(output => output.locking_bytecode.slice(2)))
-      const numberHolders = Array.from(uniqueLockingBytecodes).filter(bytecode =>
-        bytecode.startsWith('76a914')
-      ).length
-      const numberTokenAddresses = uniqueLockingBytecodes.size
+      const { numberHolders, numberTokenAddresses } = countUniqueHolders(listHoldingAddresses)
 
       setTokenInfo({
         genesisSupplyFT,
