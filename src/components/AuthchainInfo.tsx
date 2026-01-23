@@ -49,7 +49,7 @@ export function AuthchainInfo({ tokenInfo, metadataInfo }: AuthchainInfoProps) {
             </>
           )}
 
-          {metadataInfo.authchainUpdates > 0 && (
+          {metadataInfo.authchainUpdates !== undefined && metadataInfo.authchainUpdates > 0 && (
             <>
               metadata hash matches: {metadataInfo.metadataHashMatch ? "✅" : metadataInfo.metadataHashMatch === false ? "❌" : "❔"} <br /><br />
             </>

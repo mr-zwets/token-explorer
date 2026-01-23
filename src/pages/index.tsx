@@ -5,6 +5,7 @@ import { utf8ToBin, sha256, binToHex, hexToBin, lockingBytecodeToCashAddress } f
 import { useEffect, useState } from 'react'
 import { queryGenesisSupplyFT, queryActiveMinting, querySupplyNFTs, queryAuthchainLength, queryAllTokenHolders } from '../utils/queryChainGraph'
 import { countUniqueHolders, calculateTotalSupplyFT, calculateCirculatingSupplyFT } from '../utils/calculations'
+import { checkOtrVerified } from '../utils/otrRegistry'
 import type { tokenInfo, metadataInfo, tokenMetadata } from '@/interfaces'
 import { CHAINGRAPH_URL, IPFS_GATEWAY } from '@/constants'
 import { TokenSearch, MetadataDisplay, SupplyStats, AuthchainInfo } from '@/components'
@@ -25,6 +26,7 @@ export default function Home() {
     setIsLoadingTokenInfo(true)
     lookUpTokenData(readTokenId)
     fetchMetadata(readTokenId)
+    checkOtrStatus(readTokenId)
   }, [])
 
   useEffect(() => {
@@ -54,12 +56,18 @@ export default function Home() {
     setIsLoadingTokenInfo(true)
     lookUpTokenData(tokenId)
     fetchMetadata(tokenId)
+    checkOtrStatus(tokenId)
+  }
+
+  async function checkOtrStatus(tokenId: string) {
+    const isOtrVerified = await checkOtrVerified(tokenId)
+    setMetadataInfo(prev => prev ? { ...prev, isOtrVerified } : { isOtrVerified })
   }
 
   async function fetchMetadata(tokenId: string) {
     let tokenMetadataResult: tokenMetadata | undefined
     let metaDataLocation = ""
-    let httpsUrl
+    let httpsUrl: string | undefined
     let authchainUpdates = 0
     let metadataHashMatch: boolean | undefined = undefined
 
@@ -104,15 +112,14 @@ export default function Home() {
       console.log(error)
     }
 
-    const newMetadataInfo: metadataInfo = {
+    setMetadataInfo(prev => ({
+      ...prev,
       metaDataLocation,
       tokenMetadata: tokenMetadataResult,
       httpsUrl,
       authchainUpdates,
       metadataHashMatch
-    }
-
-    setMetadataInfo(newMetadataInfo)
+    }))
   }
 
   async function lookUpTokenData(tokenId: string) {

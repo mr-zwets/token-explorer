@@ -19,9 +19,10 @@ export interface metadataInfo {
   metaDataLocation?:string;
   httpsUrl?:string;
   authchainUpdates?: number
-  
+
   tokenMetadata?: tokenMetadata | undefined
   metadataHashMatch?: boolean
+  isOtrVerified?: boolean
 }
 export interface tokenMetadata {
   name: string,

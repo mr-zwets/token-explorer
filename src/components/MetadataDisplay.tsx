@@ -31,7 +31,7 @@ export function MetadataDisplay({ metadataInfo, tokenIconUri }: MetadataDisplayP
         </>
       )}
 
-      {tokenMetadata.token?.decimals && (
+      {tokenMetadata.token?.decimals !== undefined && (
         <>
           <div>decimals: {tokenMetadata.token.decimals}</div><br />
         </>
@@ -81,6 +81,12 @@ export function MetadataDisplay({ metadataInfo, tokenIconUri }: MetadataDisplayP
               alt="tokenIcon"
             />
           </div>
+        </>
+      )}
+
+      {metadataInfo.isOtrVerified && (
+        <>
+          OpenTokenRegistry (OTR) verified: ✅<br /><br />
         </>
       )}
     </>
