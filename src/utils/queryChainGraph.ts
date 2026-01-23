@@ -1,7 +1,7 @@
 import { graphql, ChaingraphClient } from "chaingraph-ts";
+import { CHAINGRAPH_URL } from "@/constants";
 
-const chaingraphUrl = "https://gql.chaingraph.pat.mn/v1/graphql";
-const chaingraphClient = new ChaingraphClient(chaingraphUrl);
+const chaingraphClient = new ChaingraphClient(CHAINGRAPH_URL);
 
 export async function queryGenesisSupplyFT(tokenId:string){
   const queryReqGenesisSupply = graphql(`query GenesisSupplyFT (

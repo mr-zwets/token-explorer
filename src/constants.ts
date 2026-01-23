@@ -1,0 +1,3 @@
+export const CHAINGRAPH_URL = "https://gql.chaingraph.pat.mn/v1/graphql";
+export const IPFS_GATEWAY = "https://w3s.link/ipfs/";
+export const BLOCK_EXPLORER_URL = "https://cashnode.bch.ninja/tx/";

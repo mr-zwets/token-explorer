@@ -6,10 +6,7 @@ import { useEffect, useState } from 'react'
 import { queryGenesisSupplyFT, queryActiveMinting, querySupplyNFTs, queryAuthchainLength, queryAllTokenHolders } from '../utils/queryChainGraph';
 import { formatTimestamp } from '@/utils/utils'
 import type { tokenInfo, metadataInfo, tokenMetadata } from '@/interfaces'
-
-const blockExplorerUrl = "https://cashnode.bch.ninja/tx/";
-const chaingraphUrl = "https://gql.chaingraph.pat.mn/v1/graphql";
-const ipfsGateway = "https://w3s.link/ipfs/";;
+import { BLOCK_EXPLORER_URL, CHAINGRAPH_URL, IPFS_GATEWAY } from '@/constants'
 
 export default function Home() {
   const [tokenId, setTokenId] = useState<string>("");
@@ -47,7 +44,7 @@ export default function Home() {
       if(imageOrIconUri) {
         if (!imageOrIconUri?.startsWith('ipfs://')) return setTokenIconUri(imageOrIconUri)
         const path = imageOrIconUri.replace('ipfs://','')
-        setTokenIconUri(ipfsGateway + path)
+        setTokenIconUri(IPFS_GATEWAY + path)
       } 
     })()
   }, [metadataInfo])
@@ -70,7 +67,7 @@ export default function Home() {
     let metadataHashMatch = undefined;
     try{
       const authChain = await BCMR.fetchAuthChainFromChaingraph({
-        chaingraphUrl: chaingraphUrl,
+        chaingraphUrl: CHAINGRAPH_URL,
         transactionHash: tokenId
       });
       console.log(authChain)
@@ -81,7 +78,7 @@ export default function Home() {
         if(!bcmrLocation || !httpsUrl) return;
         const providedHash = authChain.at(-1)?.contentHash;
         // use own gateway
-        if(bcmrLocation.startsWith("ipfs://")) httpsUrl = bcmrLocation.replace("ipfs://", ipfsGateway);
+        if(bcmrLocation.startsWith("ipfs://")) httpsUrl = bcmrLocation.replace("ipfs://", IPFS_GATEWAY);
         metaDataLocation = bcmrLocation;
 
         // fetch httpsUrl of BCMR for tokenInfo
@@ -145,15 +142,16 @@ export default function Home() {
       }
       // parse hasActiveMintingToken
       const hasActiveMintingToken = Boolean(respJsonActiveMinting.output.length);
-      // parse autchainLength, authHead
-      const authchainLength = respJsonAuthchainLength.transaction[0].authchains[0].authchain_length ?? 0;
-      const resultAuthHead = respJsonAuthchainLength.transaction[0].authchains?.[0]?.authhead?.hash as string;
-      const authHead = resultAuthHead.slice(2);
-      // parse reservedSupplyFT
-      const respReservedSupplyFT = respJsonAuthchainLength.transaction[0].authchains?.[0]?.authhead?.identity_output?.[0].fungible_token_amount as string;
-      const reservedSupplyFT:number = +respReservedSupplyFT;
-      // parse authHeadAddress
-      const authHeadLockingBytecode = respJsonAuthchainLength.transaction[0].authchains?.[0]?.authhead?.identity_output?.[0]?.locking_bytecode as string | undefined;
+
+      // parse authchain data with intermediate variables for cleaner access
+      const authchainData = respJsonAuthchainLength.transaction[0]?.authchains?.[0];
+      const authheadData = authchainData?.authhead;
+      const identityOutput = authheadData?.identity_output?.[0];
+
+      const authchainLength = authchainData?.authchain_length ?? 0;
+      const authHead = authheadData?.hash?.slice(2) ?? '';
+      const reservedSupplyFT = +(identityOutput?.fungible_token_amount ?? 0);
+      const authHeadLockingBytecode = identityOutput?.locking_bytecode as string | undefined;
       let authHeadAddress: string | undefined;
       let usesAuthGuard = false;
       if (authHeadLockingBytecode) {
@@ -337,14 +335,14 @@ export default function Home() {
                 {tokenInfo.numberTokenAddresses.toLocaleString("en-GB")}<br/><br/>
               </>):null}
             </>):null}
-            genesis transaction: <a href={blockExplorerUrl+tokenInfo.genesisTx} target="_blank" rel="noreferrer">
+            genesis transaction: <a href={BLOCK_EXPLORER_URL+tokenInfo.genesisTx} target="_blank" rel="noreferrer">
               {tokenInfo.genesisTx}
             </a><br/>
             timestamp genesis transaction: {tokenInfo.genesisTxTimestamp ? formatTimestamp(tokenInfo.genesisTxTimestamp) : "N/A"} <br/><br/>
             {metadataInfo ? <>
               authChain length: {tokenInfo.authchainLength} <br/><br/>
               authChain metadata updates: {metadataInfo.authchainUpdates} <br/><br/>
-              authHead txid: <a href={blockExplorerUrl+tokenInfo.authHead} target="_blank" rel="noreferrer">
+              authHead txid: <a href={BLOCK_EXPLORER_URL+tokenInfo.authHead} target="_blank" rel="noreferrer">
                 {tokenInfo.authHead}
               </a><br/>
               {tokenInfo.authHeadAddress ? <>
