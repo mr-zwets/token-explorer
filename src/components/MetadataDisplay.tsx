@@ -46,7 +46,7 @@ export function MetadataDisplay({ metadataInfo, tokenIconUri }: MetadataDisplayP
               href={tokenMetadata.uris.web}
               target='_blank'
               rel="noreferrer"
-              style={{ display: "inline-block", color: "#00E" }}
+              style={{ display: "inline-block" }}
             >
               {tokenMetadata.uris.web}
             </a>
@@ -59,7 +59,7 @@ export function MetadataDisplay({ metadataInfo, tokenIconUri }: MetadataDisplayP
                   href={tokenMetadata.uris[uriKey]}
                   target='_blank'
                   rel="noreferrer"
-                  style={{ display: "inline-block", color: "#00E" }}
+                  style={{ display: "inline-block" }}
                 >
                   {uriKey}
                 </a>

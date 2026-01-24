@@ -285,6 +285,17 @@ export default function Home() {
                   tokenInfo={tokenInfo}
                   metadataInfo={metadataInfo}
                 />
+                <div style={{ marginTop: "10px" }}>
+                  Cross-check with{" "}
+                  <a
+                    href={`https://explorer.salemkode.com/token/${tokenId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ display: "inline", textDecoration: "none" }}
+                  >
+                    SalemKode explorer's token page
+                  </a>
+                </div>
               </div>
             </div>
           )}

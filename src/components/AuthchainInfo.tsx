@@ -11,7 +11,7 @@ export function AuthchainInfo({ tokenInfo, metadataInfo }: AuthchainInfoProps) {
   return (
     <>
       genesis transaction: {' '}
-      <a href={BLOCK_EXPLORER_URL + tokenInfo.genesisTx} target="_blank" rel="noreferrer">
+      <a href={BLOCK_EXPLORER_URL + tokenInfo.genesisTx} target="_blank" rel="noreferrer" style={{ color: "black" }}>
         {tokenInfo.genesisTx}
       </a><br />
       timestamp genesis transaction: {tokenInfo.genesisTxTimestamp ? formatTimestamp(tokenInfo.genesisTxTimestamp) : "N/A"} <br /><br />
@@ -22,7 +22,7 @@ export function AuthchainInfo({ tokenInfo, metadataInfo }: AuthchainInfoProps) {
           authChain metadata updates: {metadataInfo.authchainUpdates} <br /><br />
 
           authHead txid: {' '}
-          <a href={BLOCK_EXPLORER_URL + tokenInfo.authHead} target="_blank" rel="noreferrer">
+          <a href={BLOCK_EXPLORER_URL + tokenInfo.authHead} target="_blank" rel="noreferrer" style={{ color: "black" }}>
             {tokenInfo.authHead}
           </a><br />
 
@@ -50,7 +50,7 @@ export function AuthchainInfo({ tokenInfo, metadataInfo }: AuthchainInfoProps) {
                 href={metadataInfo.httpsUrl}
                 target="_blank"
                 rel="noreferrer"
-                style={{ maxWidth: "570px", wordBreak: "break-all", display: "inline-block", color: "#00E" }}
+                style={{ maxWidth: "570px", wordBreak: "break-all", display: "inline-block" }}
               >
                 {metadataInfo.metaDataLocation}
               </a><br /><br />
