@@ -30,7 +30,7 @@ export function AuthchainInfo({ tokenInfo, metadataInfo }: AuthchainInfoProps) {
             <>
               last authChain update: {formatTimestamp(tokenInfo.authHeadTimestamp)}
               {tokenInfo.authHeadIsMetadataUpdate ? ' (metadata update)' : ' (identity transfer)'}
-              <br />
+              <br /><br />
             </>
           )}
 

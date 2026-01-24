@@ -42,10 +42,11 @@ export function SupplyStats({ tokenInfo, metadataInfo }: SupplyStatsProps) {
 
       {metadataInfo?.tokenMetadata && tokenInfo.genesisSupplyFT > 0 && (
         <>
-          {tokenInfo.genesisSupplyFT !== tokenInfo.totalSupplyFT && (
+          {tokenInfo.genesisSupplyFT > tokenInfo.totalSupplyFT && (
             <>
-              <span>burned: {displayTokenAmount(tokenInfo.genesisSupplyFT - tokenInfo.totalSupplyFT)}</span>
-              <div>supply excluding burns: {displayTokenAmount(tokenInfo.totalSupplyFT)}</div><br />
+              <span><i>NOTE:</i> burn calculations might be inaccurate</span><br />
+              <span>burned: {displayTokenAmount(Math.max(0, tokenInfo.genesisSupplyFT - tokenInfo.totalSupplyFT))}</span>
+              <div>supply excluding burns: {displayTokenAmount(tokenInfo.genesisSupplyFT - Math.max(0, tokenInfo.genesisSupplyFT - tokenInfo.totalSupplyFT))}</div><br />
             </>
           )}
 
