@@ -196,6 +196,16 @@ export default function Home() {
       const reservedSupplyFT = +(identityOutput?.fungible_token_amount ?? 0)
       const authHeadLockingBytecode = identityOutput?.locking_bytecode as string | undefined
 
+      // Parse authhead timestamp and check if it's a metadata update
+      const authHeadBlockTimestamp = authheadData?.block_inclusions?.[0]?.block?.timestamp
+      const authHeadTimestamp = authHeadBlockTimestamp ? Number(authHeadBlockTimestamp) : undefined
+      const authHeadOutputs = authheadData?.outputs as Array<{ output_index: number, locking_bytecode: string }> | undefined
+      // BCMR OP_RETURN prefix: 6a (OP_RETURN) + 04 (OP_PUSH4) + 42434d52 ("BCMR")
+      const BCMR_OP_RETURN_PREFIX = '6a0442434d52'
+      const authHeadIsMetadataUpdate = authHeadOutputs?.some(
+        output => output.locking_bytecode?.slice(2).toLowerCase().startsWith(BCMR_OP_RETURN_PREFIX)
+      ) ?? false
+
       let authHeadAddress: string | undefined
       let usesAuthGuard = false
       if (authHeadLockingBytecode) {
@@ -226,6 +236,8 @@ export default function Home() {
         authchainLength,
         authHead,
         authHeadAddress,
+        authHeadTimestamp,
+        authHeadIsMetadataUpdate,
         usesAuthGuard,
         circulatingSupplyFT,
         reservedSupplyFT,
