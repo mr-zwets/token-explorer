@@ -302,7 +302,7 @@ export default function Home() {
                       rel="noopener noreferrer"
                       style={{ display: "inline", textDecoration: "none" }}
                     >
-                      SalemKode explorer's token page
+                      SalemKode explorer&apos;s token page
                     </a>
                   </div>
                 )}
@@ -314,7 +314,7 @@ export default function Home() {
                     rel="noopener noreferrer"
                     style={{ display: "inline", textDecoration: "none" }}
                   >
-                    view /token endpoint
+                    view /tokens endpoint
                   </a>
                 </div>
               </div>
