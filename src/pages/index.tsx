@@ -161,6 +161,8 @@ export default function Home() {
       const genesisTx = genesisTransaction?.hash?.substring(2)
       const blockTimestamp = genesisTransaction?.block_inclusions?.[0]?.block?.timestamp
       const genesisTxTimestamp = blockTimestamp ? Number(blockTimestamp) : undefined
+      const nodeName = genesisTransaction?.block_inclusions?.[0]?.block?.accepted_by?.[0]?.node?.name
+      const network = nodeName?.includes('chipnet') ? 'chipnet' : 'mainnet'
 
       let genesisSupplyFT = 0
       if (genesisTransaction?.outputs) {
@@ -242,7 +244,8 @@ export default function Home() {
         circulatingSupplyFT,
         reservedSupplyFT,
         numberHolders,
-        numberTokenAddresses
+        numberTokenAddresses,
+        network
       })
     } catch (error) {
       console.log(error)
@@ -273,6 +276,11 @@ export default function Home() {
           {tokenInfo && (
             <div style={{ marginTop: "20px", overflowWrap: "anywhere", maxWidth: "570px" }}>
               <div className={styles.description}>
+                {tokenInfo.network === 'chipnet' && (
+                  <div style={{ marginBottom: "10px" }}>
+                    Network: chipnet
+                  </div>
+                )}
                 <MetadataDisplay
                   metadataInfo={metadataInfo}
                   tokenIconUri={tokenIconUri}
@@ -285,21 +293,23 @@ export default function Home() {
                   tokenInfo={tokenInfo}
                   metadataInfo={metadataInfo}
                 />
+                {tokenInfo.network === 'mainnet' && (
+                  <div style={{ marginTop: "10px" }}>
+                    Cross-check with{" "}
+                    <a
+                      href={`https://explorer.salemkode.com/token/${tokenId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ display: "inline", textDecoration: "none" }}
+                    >
+                      SalemKode explorer's token page
+                    </a>
+                  </div>
+                )}
                 <div style={{ marginTop: "10px" }}>
-                  Cross-check with{" "}
+                  Paytaca BCMR indexer ({tokenInfo.network}):{" "}
                   <a
-                    href={`https://explorer.salemkode.com/token/${tokenId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ display: "inline", textDecoration: "none" }}
-                  >
-                    SalemKode explorer's token page
-                  </a>
-                </div>
-                <div style={{ marginTop: "10px" }}>
-                  Paytaca BCMR indexer:{" "}
-                  <a
-                    href={`https://bcmr.paytaca.com/api/tokens/${tokenId}`}
+                    href={`https://${tokenInfo.network === 'chipnet' ? 'bcmr-chipnet' : 'bcmr'}.paytaca.com/api/tokens/${tokenId}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{ display: "inline", textDecoration: "none" }}

@@ -23,6 +23,11 @@ export async function queryGenesisSupplyFT(tokenId:string){
           block {
             timestamp
             height
+            accepted_by {
+              node {
+                name
+              }
+            }
           }
         }
       }

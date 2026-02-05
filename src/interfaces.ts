@@ -15,6 +15,7 @@ export interface tokenInfo {
   usesAuthGuard?: boolean
   numberHolders: number
   numberTokenAddresses: number
+  network: 'mainnet' | 'chipnet'
 }
 
 export interface metadataInfo {
