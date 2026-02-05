@@ -296,6 +296,17 @@ export default function Home() {
                     SalemKode explorer's token page
                   </a>
                 </div>
+                <div style={{ marginTop: "10px" }}>
+                  Paytaca BCMR indexer:{" "}
+                  <a
+                    href={`https://bcmr.paytaca.com/api/tokens/${tokenId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ display: "inline", textDecoration: "none" }}
+                  >
+                    view /token endpoint
+                  </a>
+                </div>
               </div>
             </div>
           )}
