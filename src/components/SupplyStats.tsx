@@ -134,7 +134,8 @@ export function SupplyStats({ tokenInfo, metadataInfo }: SupplyStatsProps) {
       {metadataInfo?.httpsUrl && (
         <>
           number of user-addresses holding {symbol || 'the token'}: {tokenInfo.numberHolders.toLocaleString("en-GB")}<br /><br />
-          total number of addresses holding {symbol || 'the token'} (including smart contracts): {tokenInfo.numberTokenAddresses.toLocaleString("en-GB")}<br /><br />
+          number of smart contract addresses holding {symbol || 'the token'}: {(tokenInfo.numberTokenAddresses - tokenInfo.numberHolders).toLocaleString("en-GB")}<br /><br />
+          total number of addresses holding {symbol || 'the token'}: {tokenInfo.numberTokenAddresses.toLocaleString("en-GB")}<br /><br />
         </>
       )}
     </>

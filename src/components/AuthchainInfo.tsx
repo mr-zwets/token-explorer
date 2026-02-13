@@ -86,6 +86,12 @@ export function AuthchainInfo({ tokenInfo, metadataInfo }: AuthchainInfoProps) {
               BCMR origin matches web url: ✅<br /><br />
             </>
           )}
+
+          {metadataInfo.isOtrVerified && (
+            <>
+              OpenTokenRegistry (OTR) verified: ✅<br /><br />
+            </>
+          )}
         </>
       )}
     </>

@@ -84,11 +84,6 @@ export function MetadataDisplay({ metadataInfo, tokenIconUri }: MetadataDisplayP
         </>
       )}
 
-      {metadataInfo.isOtrVerified && (
-        <>
-          OpenTokenRegistry (OTR) verified: ✅<br /><br />
-        </>
-      )}
     </>
   )
 }

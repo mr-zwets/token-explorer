@@ -300,8 +300,9 @@ export default function Home() {
                   metadataInfo={metadataInfo}
                 />
                 {tokenInfo.network === 'mainnet' && (
-                  <div style={{ marginTop: "10px" }}>
-                    Cross-check with{" "}
+                  <div>
+                    <hr />
+                    <div style={{ marginTop: "10px" }}>Cross-check with{" "}
                     <a
                       href={`https://explorer.salemkode.com/token/${tokenId}`}
                       target="_blank"
@@ -310,6 +311,7 @@ export default function Home() {
                     >
                       SalemKode explorer&apos;s token page
                     </a>
+                    </div>
                   </div>
                 )}
                 <div style={{ marginTop: "10px" }}>
