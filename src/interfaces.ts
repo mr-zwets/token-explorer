@@ -5,6 +5,7 @@ export interface tokenInfo {
   circulatingSupplyFT:number;
   reservedSupplyFT:number;
   totalSupplyNFTs:number;
+  mintingNFTs:number;
   hasActiveMintingToken:boolean;
   genesisTx: string,
   authchainLength?: number

@@ -36,7 +36,11 @@ export function SupplyStats({ tokenInfo, metadataInfo }: SupplyStatsProps) {
 
       {tokenInfo.totalSupplyNFTs > 0 && (
         <>
-          total amount NFTs: {tokenInfo.totalSupplyNFTs.toLocaleString("en-GB")} <br /><br />
+          total amount NFTs: {tokenInfo.totalSupplyNFTs.toLocaleString("en-GB")}
+          {tokenInfo.mintingNFTs > 0 && (
+            <> (incl. {tokenInfo.mintingNFTs} minting NFT{tokenInfo.mintingNFTs > 1 ? 's' : ''})</>
+          )}
+          <br /><br />
         </>
       )}
 

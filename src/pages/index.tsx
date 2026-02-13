@@ -185,6 +185,11 @@ export default function Home() {
         totalSupplyNFTs += respJsonSupplyNFTs2.output.length
       }
 
+      // Count minting NFTs
+      const mintingNFTs = fullListNftHolders.filter(
+        (o: { nonfungible_token_capability: string | null }) => o.nonfungible_token_capability === 'minting'
+      ).length
+
       // Parse hasActiveMintingToken
       const hasActiveMintingToken = Boolean(respJsonActiveMinting.output.length)
 
@@ -232,6 +237,7 @@ export default function Home() {
         genesisSupplyFT,
         totalSupplyFT,
         totalSupplyNFTs,
+        mintingNFTs,
         hasActiveMintingToken,
         genesisTx,
         genesisTxTimestamp,

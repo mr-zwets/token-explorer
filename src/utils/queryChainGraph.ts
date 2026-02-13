@@ -84,13 +84,11 @@ export async function querySupplyNFTs(tokenId:string, offset:number =0){
           token_category: {
             _eq: $tokenId
           }
-          _and: [
-            { nonfungible_token_capability: { _eq: "none" } }
-          ]
           _not: { spent_by: {} }
         }
       ) {
-        locking_bytecode
+        locking_bytecode,
+        nonfungible_token_capability
       }
   }`);
   const variables = { tokenId: `\\x${tokenId}`, offset }
