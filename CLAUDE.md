@@ -41,15 +41,32 @@ The app checks if tokens are registered in the OpenTokenRegistry (https://otr.ca
 
 ### BCMR Schema Validation
 
-Runtime validation of BCMR data uses Zod schemas in `src/utils/bcmrSchema.ts`. This is a manual Zod implementation since Zod cannot validate directly from JSON Schema or TypeScript types. For the official spec, see: https://cashtokens.org/bcmr-v2.schema.json
+Runtime validation of BCMR data uses Zod schemas in `src/utils/bcmrSchema.ts`. This is a manual Zod implementation since Zod cannot validate directly from JSON Schema or TypeScript types.
 
 For the schema definitions, see:
 - TypeScript schema: https://github.com/bitjson/chip-bcmr/blob/master/bcmr-v2.schema.ts
 - JSON schema: https://cashtokens.org/bcmr-v2.schema.json
 
-Validation is applied to:
-- Token metadata from `BCMR.getTokenInfo()` (`TokenMetadataSchema`)
-- OTR registry fetches (`RegistrySchema`)
+### Authchain History Timeline
+
+The `queryAuthchain()` Chaingraph query fetches the full authchain using the `migrations` field (ordered by `migration_index`). Each migration is classified as a "metadata update" or "identity transfer" by checking outputs for the BCMR OP_RETURN prefix (`6a0442434d52`).
+
+Two data sources are merged in the UI:
+- `tokenInfo.authchainMigrations` — basic entries from Chaingraph (txHash, timestamp, isMetadataUpdate)
+- `metadataInfo.authchainHistory` — BCMR-enriched entries from `BCMR.fetchAuthChainFromChaingraph()` (contentHash, httpsUrl, uris)
+
+The `AuthchainTimeline` component in `AuthchainInfo.tsx` merges these by txHash, using migrations as the base and enriching with BCMR data.
+
+### Network Detection
+
+The app detects chipnet vs mainnet from the node name in the genesis transaction's block inclusion data. This affects external links (Paytaca BCMR indexer URL) and is displayed in the UI.
+
+### Verification Checks
+
+- **BCMR schema validation** — Zod schemas in `src/utils/bcmrSchema.ts`
+- **Metadata hash match** — compares on-chain content hash with fetched content
+- **BCMR origin match** — checks if the BCMR hosting domain matches the token's web URL
+- **OTR verification** — checks if tokenId is present in the OpenTokenRegistry
 
 ### Token Data Types
 
@@ -57,3 +74,5 @@ The explorer handles three token scenarios:
 - Fungible Tokens only (has `genesisSupplyFT`, no NFTs)
 - NFTs only (has `totalSupplyNFTs`, no FT supply)
 - Both FT and NFTs combined
+
+NFT display includes sequential collection detection and parsable NFT commitment info.
