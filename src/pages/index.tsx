@@ -3,11 +3,11 @@ import styles from '@/styles/Home.module.css'
 import { BCMR } from '@mainnet-cash/bcmr'
 import { utf8ToBin, sha256, binToHex, hexToBin, lockingBytecodeToCashAddress } from '@bitauth/libauth'
 import { useEffect, useState } from 'react'
-import { queryGenesisSupplyFT, queryActiveMinting, querySupplyNFTs, queryAuthchainLength, queryAllTokenHolders } from '../utils/queryChainGraph'
+import { queryGenesisSupplyFT, queryActiveMinting, querySupplyNFTs, queryAuthchain, queryAllTokenHolders } from '../utils/queryChainGraph'
 import { countUniqueHolders, calculateTotalSupplyFT, calculateCirculatingSupplyFT } from '../utils/calculations'
 import { checkOtrVerified } from '../utils/otrRegistry'
 import { IdentitySnapshotSchema } from '../utils/bcmrSchema'
-import type { TokenInfo, MetadataInfo, TokenMetadata } from '@/interfaces'
+import type { TokenInfo, MetadataInfo, TokenMetadata, AuthchainEntry } from '@/interfaces'
 import { CHAINGRAPH_URL, IPFS_GATEWAY } from '@/constants'
 import { TokenSearch, MetadataDisplay, SupplyStats, AuthchainInfo } from '@/components'
 
@@ -72,6 +72,7 @@ export default function Home() {
     let authchainUpdates = 0
     let metadataHashMatch: boolean | undefined = undefined
     let isSchemaValid: boolean | undefined = undefined
+    let authchainHistory: AuthchainEntry[] | undefined = undefined
 
     try {
       const authChain = await BCMR.fetchAuthChainFromChaingraph({
@@ -83,6 +84,16 @@ export default function Home() {
       const latestAuthChainEntry = authChain.at(-1)
       if (latestAuthChainEntry) {
         authchainUpdates = authChain.length
+
+        // Store BCMR authchain entries for enrichment in the component
+        authchainHistory = authChain.map(entry => ({
+          txHash: entry.txHash,
+          isMetadataUpdate: true,
+          contentHash: entry.contentHash,
+          httpsUrl: entry.httpsUrl,
+          uris: entry.uris
+        }))
+
         const bcmrLocation = latestAuthChainEntry.uris[0]
         httpsUrl = latestAuthChainEntry.httpsUrl
         if (!bcmrLocation || !httpsUrl) return
@@ -132,7 +143,8 @@ export default function Home() {
       httpsUrl,
       authchainUpdates,
       metadataHashMatch,
-      isSchemaValid
+      isSchemaValid,
+      authchainHistory
     }))
   }
 
@@ -143,16 +155,16 @@ export default function Home() {
         respJsonAllTokenHolders,
         respJsonSupplyNFTs,
         respJsonActiveMinting,
-        respJsonAuthchainLength
+        respJsonAuthchain
       ] = await Promise.all([
         queryGenesisSupplyFT(tokenId),
         queryAllTokenHolders(tokenId),
         querySupplyNFTs(tokenId),
         queryActiveMinting(tokenId),
-        queryAuthchainLength(tokenId)
+        queryAuthchain(tokenId)
       ])
 
-      if (!respJsonGenesisSupply || !respJsonAllTokenHolders || !respJsonSupplyNFTs || !respJsonActiveMinting || !respJsonAuthchainLength) {
+      if (!respJsonGenesisSupply || !respJsonAllTokenHolders || !respJsonSupplyNFTs || !respJsonActiveMinting || !respJsonAuthchain) {
         throw new Error("Error in Chaingraph fetches")
       }
 
@@ -194,7 +206,7 @@ export default function Home() {
       const hasActiveMintingToken = Boolean(respJsonActiveMinting.output.length)
 
       // Parse authchain data with intermediate variables
-      const authchainData = respJsonAuthchainLength.transaction[0]?.authchains?.[0]
+      const authchainData = respJsonAuthchain.transaction[0]?.authchains?.[0]
       const authheadData = authchainData?.authhead
       const identityOutput = authheadData?.identity_output?.[0]
 
@@ -225,6 +237,20 @@ export default function Home() {
         authHeadAddress = typeof authHeadAddressResult === 'string' ? undefined : authHeadAddressResult.address
       }
 
+      // Parse authchain migrations into AuthchainEntry[]
+      const migrations = authchainData?.migrations
+
+      const authchainMigrations: AuthchainEntry[] = (migrations ?? []).map(m => {
+        const tx = Array.isArray(m.transaction) ? m.transaction[0] : m.transaction
+        const txHash = (tx?.hash ?? '').slice(2)
+        const blockTimestamp = tx?.block_inclusions?.[0]?.block?.timestamp
+        const timestamp = blockTimestamp ? Number(blockTimestamp) : undefined
+        const isMetadataUpdate = tx?.outputs?.some(
+          output => output.locking_bytecode?.slice(2).toLowerCase().startsWith(BCMR_OP_RETURN_PREFIX)
+        ) ?? false
+        return { txHash, timestamp, isMetadataUpdate }
+      })
+
       // Calculate supply stats
       const totalSupplyFT = calculateTotalSupplyFT(respJsonAllTokenHolders.output)
       const circulatingSupplyFT = calculateCirculatingSupplyFT(respJsonAllTokenHolders.output, reservedSupplyFT)
@@ -251,7 +277,8 @@ export default function Home() {
         reservedSupplyFT,
         numberHolders,
         numberTokenAddresses,
-        network
+        network,
+        authchainMigrations
       })
     } catch (error) {
       console.log(error)

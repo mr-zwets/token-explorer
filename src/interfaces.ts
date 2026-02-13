@@ -4,6 +4,15 @@ import { IdentitySnapshotSchema, NftCategorySchema } from './utils/bcmrSchema'
 export type TokenMetadata = z.infer<typeof IdentitySnapshotSchema>
 export type NftCategory = z.infer<typeof NftCategorySchema>
 
+export interface AuthchainEntry {
+  txHash: string
+  timestamp?: number
+  isMetadataUpdate: boolean
+  contentHash?: string
+  httpsUrl?: string
+  uris?: string[]
+}
+
 export interface TokenInfo {
   genesisSupplyFT:number;
   genesisTxTimestamp:number | undefined;
@@ -23,6 +32,7 @@ export interface TokenInfo {
   numberHolders: number
   numberTokenAddresses: number
   network: 'mainnet' | 'chipnet'
+  authchainMigrations?: AuthchainEntry[]
 }
 
 export interface MetadataInfo {
@@ -34,4 +44,5 @@ export interface MetadataInfo {
   metadataHashMatch?: boolean
   isOtrVerified?: boolean
   isSchemaValid?: boolean
+  authchainHistory?: AuthchainEntry[]
 }

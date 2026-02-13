@@ -95,8 +95,8 @@ export async function querySupplyNFTs(tokenId:string, offset:number =0){
   return (await chaingraphClient.query(queryReqTotalSupply, variables)).data
 }
 
-export async function queryAuthchainLength(tokenId:string){
-  const queryReqAuthHead = graphql(`query AuthchainLength (
+export async function queryAuthchain(tokenId:string){
+  const queryReqAuthHead = graphql(`query Authchain (
     $tokenId: bytea
   ) {
     transaction(
@@ -124,7 +124,22 @@ export async function queryAuthchainLength(tokenId:string){
             locking_bytecode
           }
         },
-        authchain_length
+        authchain_length,
+        migrations(order_by: { migration_index: asc }) {
+          migration_index
+          transaction {
+            hash
+            block_inclusions {
+              block {
+                timestamp
+              }
+            }
+            outputs {
+              output_index
+              locking_bytecode
+            }
+          }
+        }
       }
     }
   }`);
