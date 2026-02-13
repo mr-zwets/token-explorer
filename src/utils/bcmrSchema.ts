@@ -139,14 +139,3 @@ export const RegistrySchema = z.object({
 })
 
 export type ValidatedRegistry = z.infer<typeof RegistrySchema>
-
-// Schema for validating token metadata returned by BCMR.getTokenInfo()
-export const TokenMetadataSchema = z.object({
-  name: z.string(),
-  description: z.string().optional(),
-  token: z.object({
-    symbol: z.string(),
-    decimals: z.number().int().min(0).max(18).optional(),
-  }).optional(),
-  uris: URIsSchema,
-})

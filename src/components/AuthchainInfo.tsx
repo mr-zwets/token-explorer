@@ -1,10 +1,10 @@
-import type { tokenInfo, metadataInfo } from '@/interfaces'
+import type { TokenInfo, MetadataInfo } from '@/interfaces'
 import { formatTimestamp } from '@/utils/utils'
 import { BLOCK_EXPLORER_URL } from '@/constants'
 
 interface AuthchainInfoProps {
-  tokenInfo: tokenInfo
-  metadataInfo: metadataInfo | undefined
+  tokenInfo: TokenInfo
+  metadataInfo: MetadataInfo | undefined
 }
 
 export function AuthchainInfo({ tokenInfo, metadataInfo }: AuthchainInfoProps) {

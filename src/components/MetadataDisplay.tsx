@@ -1,7 +1,7 @@
-import type { metadataInfo } from '@/interfaces'
+import type { MetadataInfo } from '@/interfaces'
 
 interface MetadataDisplayProps {
-  metadataInfo: metadataInfo | undefined
+  metadataInfo: MetadataInfo | undefined
   tokenIconUri: string
 }
 
@@ -56,7 +56,7 @@ export function MetadataDisplay({ metadataInfo, tokenIconUri }: MetadataDisplayP
             otherUriKeys.map((uriKey, index, array) => (
               <span key={uriKey}>
                 <a
-                  href={tokenMetadata.uris[uriKey]}
+                  href={tokenMetadata.uris?.[uriKey]}
                   target='_blank'
                   rel="noreferrer"
                   style={{ display: "inline-block" }}

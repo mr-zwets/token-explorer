@@ -1,4 +1,10 @@
-export interface tokenInfo {
+import { z } from 'zod/v4'
+import { IdentitySnapshotSchema, NftCategorySchema } from './utils/bcmrSchema'
+
+export type TokenMetadata = z.infer<typeof IdentitySnapshotSchema>
+export type NftCategory = z.infer<typeof NftCategorySchema>
+
+export interface TokenInfo {
   genesisSupplyFT:number;
   genesisTxTimestamp:number | undefined;
   totalSupplyFT:number;
@@ -19,25 +25,13 @@ export interface tokenInfo {
   network: 'mainnet' | 'chipnet'
 }
 
-export interface metadataInfo {
+export interface MetadataInfo {
   metaDataLocation?:string;
   httpsUrl?:string;
   authchainUpdates?: number
 
-  tokenMetadata?: tokenMetadata | undefined
+  tokenMetadata?: TokenMetadata | undefined
   metadataHashMatch?: boolean
   isOtrVerified?: boolean
   isSchemaValid?: boolean
 }
-export interface tokenMetadata {
-  name: string,
-  description?: string,
-  token?: {
-    symbol: string,
-    decimals?:number
-  },
-  uris: URIs
-}
-type URIs = {
-  [identifier: string]: string;
-};

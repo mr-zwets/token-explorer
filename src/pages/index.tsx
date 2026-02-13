@@ -6,16 +6,16 @@ import { useEffect, useState } from 'react'
 import { queryGenesisSupplyFT, queryActiveMinting, querySupplyNFTs, queryAuthchainLength, queryAllTokenHolders } from '../utils/queryChainGraph'
 import { countUniqueHolders, calculateTotalSupplyFT, calculateCirculatingSupplyFT } from '../utils/calculations'
 import { checkOtrVerified } from '../utils/otrRegistry'
-import { TokenMetadataSchema } from '../utils/bcmrSchema'
-import type { tokenInfo, metadataInfo, tokenMetadata } from '@/interfaces'
+import { IdentitySnapshotSchema } from '../utils/bcmrSchema'
+import type { TokenInfo, MetadataInfo, TokenMetadata } from '@/interfaces'
 import { CHAINGRAPH_URL, IPFS_GATEWAY } from '@/constants'
 import { TokenSearch, MetadataDisplay, SupplyStats, AuthchainInfo } from '@/components'
 
 export default function Home() {
   const [tokenId, setTokenId] = useState<string>("")
   const [isLoadingTokenInfo, setIsLoadingTokenInfo] = useState<boolean>(false)
-  const [tokenInfo, setTokenInfo] = useState<tokenInfo>()
-  const [metadataInfo, setMetadataInfo] = useState<metadataInfo>()
+  const [tokenInfo, setTokenInfo] = useState<TokenInfo>()
+  const [metadataInfo, setMetadataInfo] = useState<MetadataInfo>()
   const [tokenIconUri, setTokenIconUri] = useState<string>("")
 
   useEffect(() => {
@@ -66,7 +66,7 @@ export default function Home() {
   }
 
   async function fetchMetadata(tokenId: string) {
-    let tokenMetadataResult: tokenMetadata | undefined
+    let tokenMetadataResult: TokenMetadata | undefined
     let metaDataLocation = ""
     let httpsUrl: string | undefined
     let authchainUpdates = 0
@@ -96,16 +96,16 @@ export default function Home() {
         try {
           console.log("Importing an on-chain resolved BCMR!")
           await BCMR.addMetadataRegistryFromUri(httpsUrl)
-          const rawTokenMetadata = BCMR.getTokenInfo(tokenId)
+          const tokenMetadata = BCMR.getTokenInfo(tokenId)
 
           // Validate token metadata against BCMR schema
-          const validationResult = TokenMetadataSchema.safeParse(rawTokenMetadata)
+          const validationResult = IdentitySnapshotSchema.safeParse(tokenMetadata)
           if (validationResult.success) {
-            tokenMetadataResult = rawTokenMetadata as tokenMetadata
+            tokenMetadataResult = tokenMetadata as TokenMetadata
             isSchemaValid = true
           } else {
             console.error('Token metadata schema validation failed:', validationResult.error.issues)
-            tokenMetadataResult = rawTokenMetadata as tokenMetadata
+            tokenMetadataResult = tokenMetadata as TokenMetadata
             isSchemaValid = false
           }
 
