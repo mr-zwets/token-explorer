@@ -10,9 +10,14 @@ function NftParseDetails({ nfts }: { nfts: NftCategory }) {
   const typeEntries = Object.entries(types)
   if (typeEntries.length === 0) return null
 
+  const isSequential = !nfts.parse.bytecode
+  const summaryLabel = isSequential
+    ? `sequential NFT collection (${typeEntries.length} NFT entr${typeEntries.length > 1 ? 'ies' : 'y'} defined)`
+    : `parsable BCMR metadata (${typeEntries.length} NFT type${typeEntries.length > 1 ? 's' : ''} defined)`
+
   return (
     <details>
-      <summary>parsable BCMR metadata ({typeEntries.length} NFT type{typeEntries.length > 1 ? 's' : ''} defined)</summary>
+      <summary>{summaryLabel}</summary>
       <div style={{ paddingLeft: '1em', marginTop: '0.5em' }}>
         {nfts.description && <div>collection description: {nfts.description}<br /><br /></div>}
         {nfts.parse.bytecode && <div>parse bytecode: {nfts.parse.bytecode}<br /><br /></div>}
@@ -29,7 +34,7 @@ function NftParseDetails({ nfts }: { nfts: NftCategory }) {
         )}
         {typeEntries.map(([typeId, nftType]) => (
           <details key={typeId} style={{ marginBottom: '0.5em' }}>
-            <summary>type &quot;{typeId}&quot;: {nftType.name}</summary>
+            <summary>{isSequential ? `#${typeId}` : `type "${typeId}"`}: {nftType.name}</summary>
             <div style={{ paddingLeft: '1em', marginTop: '0.3em' }}>
               {nftType.description && <div>description: {nftType.description}</div>}
               {nftType.fields && nftType.fields.length > 0 && (
