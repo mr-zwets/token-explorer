@@ -84,12 +84,6 @@ export function MetadataDisplay({ metadataInfo, tokenIconUri }: MetadataDisplayP
         </>
       )}
 
-      {metadataInfo.isSchemaValid !== undefined && (
-        <>
-          BCMR schema valid: {metadataInfo.isSchemaValid ? '✅' : '❌'}<br /><br />
-        </>
-      )}
-
       {metadataInfo.isOtrVerified && (
         <>
           OpenTokenRegistry (OTR) verified: ✅<br /><br />

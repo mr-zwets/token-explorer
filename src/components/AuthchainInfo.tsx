@@ -7,7 +7,19 @@ interface AuthchainInfoProps {
   metadataInfo: MetadataInfo | undefined
 }
 
+const getBaseDomain = (url: string) => {
+  try {
+    const parts = new URL(url).hostname.split('.')
+    return parts.slice(-2).join('.')
+  } catch { return undefined }
+}
+
 export function AuthchainInfo({ tokenInfo, metadataInfo }: AuthchainInfoProps) {
+  const webUrl = metadataInfo?.tokenMetadata?.uris?.web
+  const bcmrBaseDomain = metadataInfo?.httpsUrl ? getBaseDomain(metadataInfo.httpsUrl) : undefined
+  const webBaseDomain = webUrl ? getBaseDomain(webUrl) : undefined
+  const bcmrOriginMatchesWeb = bcmrBaseDomain && webBaseDomain ? bcmrBaseDomain === webBaseDomain : undefined
+
   return (
     <>
       genesis transaction: {' '}
@@ -57,9 +69,21 @@ export function AuthchainInfo({ tokenInfo, metadataInfo }: AuthchainInfoProps) {
             </>
           )}
 
+          {metadataInfo.isSchemaValid !== undefined && (
+            <>
+              BCMR schema valid: {metadataInfo.isSchemaValid ? '✅' : '❌'}<br /><br />
+            </>
+          )}
+
           {metadataInfo.authchainUpdates !== undefined && metadataInfo.authchainUpdates > 0 && (
             <>
               metadata hash matches: {metadataInfo.metadataHashMatch ? "✅" : metadataInfo.metadataHashMatch === false ? "❌" : "❔"} <br /><br />
+            </>
+          )}
+
+          {bcmrOriginMatchesWeb && (
+            <>
+              BCMR origin matches web url: ✅<br /><br />
             </>
           )}
         </>
