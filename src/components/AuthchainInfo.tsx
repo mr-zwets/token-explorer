@@ -1,4 +1,4 @@
-import type { TokenInfo, MetadataInfo, AuthchainEntry } from '@/interfaces'
+import type { TokenInfo, MetadataInfo, AuthchainEntry, Diagnostic } from '@/interfaces'
 import { formatTimestamp } from '@/utils/utils'
 import { BLOCK_EXPLORER_URL } from '@/constants'
 
@@ -14,7 +14,7 @@ const getBaseDomain = (url: string) => {
   } catch { return undefined }
 }
 
-function AuthchainTimeline({ migrations, bcmrEntries }: { migrations?: AuthchainEntry[], bcmrEntries?: AuthchainEntry[] }) {
+function AuthchainTimeline({ migrations, bcmrEntries, genesisTx, authHead }: { migrations?: AuthchainEntry[], bcmrEntries?: AuthchainEntry[], genesisTx?: string, authHead?: string }) {
   if (!migrations || migrations.length === 0) return null
 
   // Merge: use migrations as the base timeline, enrich with BCMR data
@@ -40,7 +40,7 @@ function AuthchainTimeline({ migrations, bcmrEntries }: { migrations?: Authchain
       </summary>
       <div style={{ marginTop: '8px', marginLeft: '8px' }}>
         {entries.map((entry, index) => (
-          <div key={entry.txHash} style={{ marginBottom: '8px', paddingLeft: '8px', borderLeft: '2px solid #ccc' }}>
+          <div key={entry.txHash} style={{ marginBottom: '14px', paddingLeft: '8px', borderLeft: '2px solid #ccc', lineHeight: '1.6' }}>
             <div>
               <strong>#{index}</strong>{' '}
               <span style={{
@@ -53,10 +53,36 @@ function AuthchainTimeline({ migrations, bcmrEntries }: { migrations?: Authchain
               }}>
                 {entry.isMetadataUpdate ? 'metadata update' : 'identity transfer'}
               </span>
+              {entry.txHash === genesisTx && (
+                <span style={{
+                  display: 'inline-block',
+                  padding: '1px 6px',
+                  fontSize: '0.85em',
+                  borderRadius: '4px',
+                  marginLeft: '4px',
+                  backgroundColor: '#cce5ff',
+                  color: '#004085'
+                }}>
+                  token genesis
+                </span>
+              )}
+              {entry.txHash === authHead && (
+                <span style={{
+                  display: 'inline-block',
+                  padding: '1px 6px',
+                  fontSize: '0.85em',
+                  borderRadius: '4px',
+                  marginLeft: '4px',
+                  backgroundColor: '#e2d9f3',
+                  color: '#3d2b6b'
+                }}>
+                  authhead
+                </span>
+              )}
             </div>
             <div>
               tx:{' '}
-              <a href={BLOCK_EXPLORER_URL + entry.txHash} target="_blank" rel="noreferrer" style={{ color: 'black' }}>
+              <a href={BLOCK_EXPLORER_URL + entry.txHash} target="_blank" rel="noreferrer" style={{ color: 'black', display: 'inline', textDecoration: 'none' }}>
                 {entry.txHash.substring(0, 16)}...{entry.txHash.substring(entry.txHash.length - 8)}
               </a>
             </div>
@@ -80,6 +106,135 @@ function AuthchainTimeline({ migrations, bcmrEntries }: { migrations?: Authchain
                   )}
                 </div>
               </details>
+            )}
+          </div>
+        ))}
+      </div>
+    </details>
+  )
+}
+
+const diagnosticLabels: Record<string, string> = {
+  fetch_failed: 'Fetch Failed',
+  http_error: 'HTTP Error',
+  invalid_json: 'Invalid JSON',
+  schema_invalid: 'Schema Invalid',
+  hash_mismatch: 'Hash Mismatch'
+}
+
+// Parse OP_RETURN script into data pushes (skipping opcodes)
+function parseOpReturnPushes(hex: string): string[] {
+  const pushes: string[] = []
+  let i = 0
+  // Skip OP_RETURN (6a)
+  if (hex.slice(0, 2) === '6a') i = 2
+  while (i < hex.length) {
+    const opcode = parseInt(hex.slice(i, i + 2), 16)
+    i += 2
+    let len = 0
+    if (opcode >= 0x01 && opcode <= 0x4b) {
+      len = opcode
+    } else if (opcode === 0x4c) { // OP_PUSHDATA1
+      len = parseInt(hex.slice(i, i + 2), 16); i += 2
+    } else if (opcode === 0x4d) { // OP_PUSHDATA2
+      len = parseInt(hex.slice(i + 2, i + 4) + hex.slice(i, i + 2), 16); i += 4
+    } else {
+      continue
+    }
+    pushes.push(hex.slice(i, i + len * 2))
+    i += len * 2
+  }
+  return pushes
+}
+
+function hexToUtf8(hex: string): string {
+  const bytes: number[] = []
+  for (let i = 0; i < hex.length; i += 2) {
+    bytes.push(parseInt(hex.slice(i, i + 2), 16))
+  }
+  return new TextDecoder().decode(new Uint8Array(bytes))
+}
+
+function LatestPublicationOutput({ migrations, lastMetadataUpdateTimestamp }: {
+  migrations?: AuthchainEntry[]
+  lastMetadataUpdateTimestamp?: number
+}) {
+  // Find the last metadata update migration that has opReturnHex
+  const latestPublication = migrations ? [...migrations].reverse().find(m => m.isMetadataUpdate && m.opReturnHex) : undefined
+  if (!latestPublication?.opReturnHex) return null
+
+  const rawHex = latestPublication.opReturnHex
+  const pushes = parseOpReturnPushes(rawHex)
+  // pushes[0] = "BCMR" (42434d52), pushes[1] = content hash, pushes[2+] = URIs
+
+  return (
+    <>
+      {lastMetadataUpdateTimestamp && (
+        <div style={{ marginTop: '14px' }}>last metadata update: {formatTimestamp(lastMetadataUpdateTimestamp)}</div>
+      )}
+      <details style={{ marginTop: '14px' }}>
+        <summary style={{ cursor: 'pointer' }}>latest publication output</summary>
+        <div style={{ marginLeft: '8px', marginTop: '4px' }}>
+          <div style={{ marginTop: '4px' }}>
+            <strong>raw hex:</strong>
+            <div style={{ fontFamily: 'monospace', fontSize: '0.85em', wordBreak: 'break-all', marginTop: '2px' }}>{rawHex}</div>
+          </div>
+          {pushes.length > 0 && (
+            <div style={{ marginTop: '8px' }}>
+              <strong>data pushes:</strong>
+              {pushes.map((push, i) => (
+                <div key={i} style={{ fontFamily: 'monospace', fontSize: '0.85em', wordBreak: 'break-all', marginTop: '2px' }}>
+                  [{i}] {push}
+                </div>
+              ))}
+            </div>
+          )}
+          {pushes.length > 0 && (
+            <div style={{ marginTop: '8px' }}>
+              <strong>decoded:</strong>
+              {pushes.map((push, i) => (
+                <div key={i} style={{ wordBreak: 'break-all', marginTop: '2px' }}>
+                  [{i}] {i === 1 ? `<${push.length / 2}_byte_hash>` : hexToUtf8(push)}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </details>
+      <br />
+    </>
+  )
+}
+
+function DiagnosticsSection({ diagnostics }: { diagnostics?: Diagnostic[] }) {
+  if (!diagnostics || diagnostics.length === 0) return null
+  return (
+    <details style={{ marginBottom: '8px' }}>
+      <summary style={{ cursor: 'pointer' }}>
+        diagnostics ({diagnostics.length} issue{diagnostics.length !== 1 ? 's' : ''})
+      </summary>
+      <div style={{ marginTop: '8px', marginLeft: '8px' }}>
+        {diagnostics.map((diag, i) => (
+          <div key={i} style={{
+            marginBottom: '8px',
+            padding: '8px',
+            borderRadius: '4px',
+            backgroundColor: '#fff3cd',
+            color: '#856404'
+          }}>
+            <div><strong>{diagnosticLabels[diag.type] ?? diag.type}</strong></div>
+            <div style={{ marginTop: '2px' }}>{diag.message}</div>
+            {diag.details && (
+              <pre style={{
+                marginTop: '4px',
+                fontSize: '0.85em',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-all',
+                fontFamily: 'monospace',
+                backgroundColor: 'rgba(0,0,0,0.05)',
+                padding: '4px',
+                borderRadius: '2px'
+              }}>{diag.details}</pre>
             )}
           </div>
         ))}
@@ -116,13 +271,24 @@ export function AuthchainInfo({ tokenInfo, metadataInfo }: AuthchainInfoProps) {
             <>
               last authChain update: {formatTimestamp(tokenInfo.authHeadTimestamp)}
               {tokenInfo.authHeadIsMetadataUpdate ? ' (metadata update)' : ' (identity transfer)'}
-              <br /><br />
+              <br />
             </>
           )}
+
+          <LatestPublicationOutput
+            migrations={tokenInfo.authchainMigrations}
+            lastMetadataUpdateTimestamp={
+              !tokenInfo.authHeadIsMetadataUpdate
+                ? [...(tokenInfo.authchainMigrations ?? [])].reverse().find(m => m.isMetadataUpdate)?.timestamp
+                : undefined
+            }
+          />
 
           <AuthchainTimeline
             migrations={tokenInfo.authchainMigrations}
             bcmrEntries={metadataInfo.authchainHistory}
+            genesisTx={tokenInfo.genesisTx}
+            authHead={tokenInfo.authHead}
           />
           <br />
 
@@ -131,7 +297,7 @@ export function AuthchainInfo({ tokenInfo, metadataInfo }: AuthchainInfoProps) {
           )}
 
           {tokenInfo.usesAuthGuard && (
-            <>uses authGuard standard: ✅<br /></>
+            <div style={{ marginTop: '14px' }}>uses authGuard standard: ✅</div>
           )}
           <br />
 
@@ -172,6 +338,8 @@ export function AuthchainInfo({ tokenInfo, metadataInfo }: AuthchainInfoProps) {
               OpenTokenRegistry (OTR) verified: ✅<br /><br />
             </>
           )}
+
+          <DiagnosticsSection diagnostics={metadataInfo.diagnostics} />
         </>
       )}
     </>

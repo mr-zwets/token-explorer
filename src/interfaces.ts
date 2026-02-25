@@ -11,6 +11,7 @@ export interface AuthchainEntry {
   contentHash?: string
   httpsUrl?: string
   uris?: string[]
+  opReturnHex?: string
 }
 
 export interface TokenInfo {
@@ -35,6 +36,19 @@ export interface TokenInfo {
   authchainMigrations?: AuthchainEntry[]
 }
 
+export type DiagnosticType =
+  | 'fetch_failed'      // CORS, network error, server down
+  | 'http_error'        // Non-2xx HTTP status (403 Cloudflare, 404, 500...)
+  | 'invalid_json'      // Server returned non-JSON (HTML error page, Cloudflare challenge)
+  | 'schema_invalid'    // Zod validation failed — detail lists specific issues
+  | 'hash_mismatch'     // On-chain hash doesn't match fetched content
+
+export interface Diagnostic {
+  type: DiagnosticType
+  message: string
+  details?: string
+}
+
 export interface MetadataInfo {
   metaDataLocation?:string;
   httpsUrl?:string;
@@ -45,4 +59,5 @@ export interface MetadataInfo {
   isOtrVerified?: boolean
   isSchemaValid?: boolean
   authchainHistory?: AuthchainEntry[]
+  diagnostics?: Diagnostic[]
 }

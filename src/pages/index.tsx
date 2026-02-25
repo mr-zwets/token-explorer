@@ -7,7 +7,7 @@ import { queryGenesisSupplyFT, queryActiveMinting, querySupplyNFTs, queryAuthcha
 import { countUniqueHolders, calculateTotalSupplyFT, calculateCirculatingSupplyFT } from '../utils/calculations'
 import { checkOtrVerified } from '../utils/otrRegistry'
 import { IdentitySnapshotSchema } from '../utils/bcmrSchema'
-import type { TokenInfo, MetadataInfo, TokenMetadata, AuthchainEntry } from '@/interfaces'
+import type { TokenInfo, MetadataInfo, TokenMetadata, AuthchainEntry, Diagnostic } from '@/interfaces'
 import { CHAINGRAPH_URL, IPFS_GATEWAY } from '@/constants'
 import { TokenSearch, MetadataDisplay, SupplyStats, AuthchainInfo } from '@/components'
 
@@ -73,6 +73,7 @@ export default function Home() {
     let metadataHashMatch: boolean | undefined = undefined
     let isSchemaValid: boolean | undefined = undefined
     let authchainHistory: AuthchainEntry[] | undefined = undefined
+    const diagnostics: Diagnostic[] = []
 
     try {
       const authChain = await BCMR.fetchAuthChainFromChaingraph({
@@ -104,12 +105,43 @@ export default function Home() {
         }
         metaDataLocation = bcmrLocation
 
+        // Step A: Import metadata registry from URL
+        const isIpfs = bcmrLocation.startsWith('ipfs://') || httpsUrl.includes('/ipfs/')
+        let importSucceeded = false
         try {
           console.log("Importing an on-chain resolved BCMR!")
           await BCMR.addMetadataRegistryFromUri(httpsUrl)
-          const tokenMetadata = BCMR.getTokenInfo(tokenId)
+          importSucceeded = true
+        } catch (e) {
+          console.log(e)
+          if (e instanceof TypeError && (e.message.includes('Failed to fetch') || e.message.includes('fetch'))) {
+            diagnostics.push({
+              type: 'fetch_failed',
+              message: isIpfs
+                ? 'Unable to fetch metadata from IPFS gateway. The gateway may be down, slow, or the content may not be pinned.'
+                : 'Unable to fetch metadata from URL. This is likely a CORS issue — the server needs to include an Access-Control-Allow-Origin header.',
+              details: `URL: ${httpsUrl}\nError: ${e.message}`
+            })
+          } else if (e instanceof SyntaxError) {
+            diagnostics.push({
+              type: 'invalid_json',
+              message: isIpfs
+                ? 'IPFS gateway returned non-JSON content. The gateway may be returning an error page or the pinned content is not valid JSON.'
+                : 'Server returned non-JSON content. The URL may be serving an HTML error page or Cloudflare challenge.',
+              details: `URL: ${httpsUrl}\nError: ${e.message}`
+            })
+          } else {
+            diagnostics.push({
+              type: 'fetch_failed',
+              message: `Failed to import metadata registry: ${e instanceof Error ? e.message : String(e)}`,
+              details: `URL: ${httpsUrl}`
+            })
+          }
+        }
 
-          // Validate token metadata against BCMR schema
+        if (importSucceeded) {
+          // Step B: Schema validation
+          const tokenMetadata = BCMR.getTokenInfo(tokenId)
           const validationResult = IdentitySnapshotSchema.safeParse(tokenMetadata)
           if (validationResult.success) {
             tokenMetadataResult = tokenMetadata as TokenMetadata
@@ -118,18 +150,56 @@ export default function Home() {
             console.error('Token metadata schema validation failed:', validationResult.error.issues)
             tokenMetadataResult = tokenMetadata as TokenMetadata
             isSchemaValid = false
+            const issueMessages = validationResult.error.issues.map(
+              issue => `${issue.path.join('.')}: ${issue.message}`
+            ).join('\n')
+            diagnostics.push({
+              type: 'schema_invalid',
+              message: 'Token metadata does not fully conform to the BCMR schema.',
+              details: issueMessages
+            })
           }
 
-          const response = await fetch(httpsUrl)
-          if (!response.ok) {
-            metadataHashMatch = false
-            throw new Error(`Failed to fetch BCMR content from ${httpsUrl}: ${response.status} ${response.statusText}`)
+          // Step C: Hash verification
+          try {
+            const response = await fetch(httpsUrl)
+            if (!response.ok) {
+              metadataHashMatch = false
+              diagnostics.push({
+                type: 'http_error',
+                message: `HTTP ${response.status} when fetching metadata for hash verification.`,
+                details: `URL: ${httpsUrl}\nStatus: ${response.status} ${response.statusText}`
+              })
+            } else {
+              const bcmrContent = await response.text()
+              const contentHash = binToHex(sha256.hash(utf8ToBin(bcmrContent)))
+              metadataHashMatch = contentHash === providedHash
+              if (!metadataHashMatch) {
+                diagnostics.push({
+                  type: 'hash_mismatch',
+                  message: 'On-chain content hash does not match the fetched metadata content.',
+                  details: `expected: ${providedHash}\nactual: ${contentHash}`
+                })
+              }
+            }
+          } catch (e) {
+            console.log(e)
+            if (e instanceof TypeError && (e.message.includes('Failed to fetch') || e.message.includes('fetch'))) {
+              diagnostics.push({
+                type: 'fetch_failed',
+                message: isIpfs
+                  ? 'Unable to re-fetch metadata from IPFS gateway for hash verification.'
+                  : 'Unable to re-fetch metadata for hash verification (likely CORS).',
+                details: `URL: ${httpsUrl}\nError: ${(e as Error).message}`
+              })
+            } else {
+              diagnostics.push({
+                type: 'fetch_failed',
+                message: `Hash verification fetch failed: ${e instanceof Error ? e.message : String(e)}`,
+                details: `URL: ${httpsUrl}`
+              })
+            }
           }
-          const bcmrContent = await response.text()
-          const contentHash = binToHex(sha256.hash(utf8ToBin(bcmrContent)))
-          metadataHashMatch = contentHash === providedHash
-        } catch (e) {
-          console.log(e)
         }
       }
     } catch (error) {
@@ -144,7 +214,8 @@ export default function Home() {
       authchainUpdates,
       metadataHashMatch,
       isSchemaValid,
-      authchainHistory
+      authchainHistory,
+      diagnostics: diagnostics.length > 0 ? diagnostics : undefined
     }))
   }
 
@@ -245,11 +316,16 @@ export default function Home() {
         const txHash = (tx?.hash ?? '').slice(2)
         const blockTimestamp = tx?.block_inclusions?.[0]?.block?.timestamp
         const timestamp = blockTimestamp ? Number(blockTimestamp) : undefined
-        const isMetadataUpdate = tx?.outputs?.some(
+        const bcmrOutput = tx?.outputs?.find(
           output => output.locking_bytecode?.slice(2).toLowerCase().startsWith(BCMR_OP_RETURN_PREFIX)
-        ) ?? false
-        return { txHash, timestamp, isMetadataUpdate }
+        )
+        const isMetadataUpdate = !!bcmrOutput
+        const opReturnHex = bcmrOutput ? bcmrOutput.locking_bytecode?.slice(2) : undefined
+        return { txHash, timestamp, isMetadataUpdate, opReturnHex }
       })
+      // Remove pre-genesis migrations (Chaingraph includes the funding tx)
+      const genesisIndex = authchainMigrations.findIndex(m => m.txHash === genesisTx)
+      const filteredMigrations = genesisIndex >= 0 ? authchainMigrations.slice(genesisIndex) : authchainMigrations
 
       // Calculate supply stats
       const totalSupplyFT = calculateTotalSupplyFT(respJsonAllTokenHolders.output)
@@ -278,12 +354,13 @@ export default function Home() {
         numberHolders,
         numberTokenAddresses,
         network,
-        authchainMigrations
+        authchainMigrations: filteredMigrations
       })
     } catch (error) {
       console.log(error)
       alert("The input is not a valid tokenId!")
       setTokenInfo(undefined)
+      setIsLoadingTokenInfo(false)
     }
   }
 
