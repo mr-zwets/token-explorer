@@ -3,7 +3,7 @@ import styles from '@/styles/Home.module.css'
 import { BCMR } from '@mainnet-cash/bcmr'
 import { utf8ToBin, sha256, binToHex, hexToBin, lockingBytecodeToCashAddress } from '@bitauth/libauth'
 import { useEffect, useState } from 'react'
-import { queryGenesisSupplyFT, queryActiveMinting, querySupplyNFTs, queryAuthchain, queryAllTokenHolders } from '../utils/queryChainGraph'
+import { queryGenesisSupplyFT, queryActiveMinting, querySupplyNFTs, queryAuthchain, queryAllTokenHolders, queryGenesisCategories } from '../utils/queryChainGraph'
 import { countUniqueHolders, calculateTotalSupplyFT, calculateCirculatingSupplyFT } from '../utils/calculations'
 import { checkOtrVerified } from '../utils/otrRegistry'
 import { IdentitySnapshotSchema } from '../utils/bcmrSchema'
@@ -142,22 +142,28 @@ export default function Home() {
         if (importSucceeded) {
           // Step B: Schema validation
           const tokenMetadata = BCMR.getTokenInfo(tokenId)
-          const validationResult = IdentitySnapshotSchema.safeParse(tokenMetadata)
-          if (validationResult.success) {
-            tokenMetadataResult = tokenMetadata as TokenMetadata
-            isSchemaValid = true
+          if (!tokenMetadata || typeof tokenMetadata !== 'object') {
+            // Registry was fetched but doesn't contain an entry for this tokenId
+            // This typically means the txid is not a token category
+            console.log('No metadata entry found for this tokenId in the resolved registry')
           } else {
-            console.error('Token metadata schema validation failed:', validationResult.error.issues)
-            tokenMetadataResult = tokenMetadata as TokenMetadata
-            isSchemaValid = false
-            const issueMessages = validationResult.error.issues.map(
-              issue => `${issue.path.join('.')}: ${issue.message}`
-            ).join('\n')
-            diagnostics.push({
-              type: 'schema_invalid',
-              message: 'Token metadata does not fully conform to the BCMR schema.',
-              details: issueMessages
-            })
+            const validationResult = IdentitySnapshotSchema.safeParse(tokenMetadata)
+            if (validationResult.success) {
+              tokenMetadataResult = tokenMetadata as TokenMetadata
+              isSchemaValid = true
+            } else {
+              console.error('Token metadata schema validation failed:', validationResult.error.issues)
+              tokenMetadataResult = tokenMetadata as TokenMetadata
+              isSchemaValid = false
+              const issueMessages = validationResult.error.issues.map(
+                issue => `${issue.path.join('.')}: ${issue.message}`
+              ).join('\n')
+              diagnostics.push({
+                type: 'schema_invalid',
+                message: 'Token metadata does not fully conform to the BCMR schema.',
+                details: issueMessages
+              })
+            }
           }
 
           // Step C: Hash verification
@@ -239,12 +245,15 @@ export default function Home() {
         throw new Error("Error in Chaingraph fetches")
       }
 
+      // Check if the transaction exists on-chain (authchain query finds it by hash)
+      const validTxId = respJsonAuthchain.transaction.length > 0
+
       // Parse genesis supply
       const genesisTransaction = respJsonGenesisSupply.transaction[0]
       const genesisTx = genesisTransaction?.hash?.substring(2)
       const blockTimestamp = genesisTransaction?.block_inclusions?.[0]?.block?.timestamp
       const genesisTxTimestamp = blockTimestamp ? Number(blockTimestamp) : undefined
-      const nodeName = genesisTransaction?.block_inclusions?.[0]?.block?.accepted_by?.[0]?.node?.name
+      const nodeName = respJsonAuthchain.transaction[0]?.block_inclusions?.[0]?.block?.accepted_by?.[0]?.node?.name
       const network = nodeName?.includes('chipnet') ? 'chipnet' : 'mainnet'
 
       let genesisSupplyFT = 0
@@ -335,7 +344,35 @@ export default function Home() {
       const listHoldingAddresses = genesisSupplyFT ? respJsonAllTokenHolders.output : fullListNftHolders
       const { numberHolders, numberTokenAddresses } = countUniqueHolders(listHoldingAddresses)
 
+      // A valid token category must have tokens created with it
+      const validTokenCategory = genesisSupplyFT > 0 || totalSupplyNFTs > 0
+
+      // If not a valid token category, check if this tx is a genesis tx for other categories
+      let tokenCategoriesInTx: string[] | undefined
+      if (!validTokenCategory && validTxId) {
+        const respTokenOutputs = await queryGenesisCategories(tokenId)
+        if (respTokenOutputs?.transaction?.[0]) {
+          const tx = respTokenOutputs.transaction[0]
+          const input0Hash = tx.inputs?.[0]?.outpoint_transaction_hash
+          if (input0Hash) {
+            // Find categories that match input 0's outpoint hash (= genesis categories)
+            const genesisCategories = new Set<string>()
+            for (const output of tx.outputs ?? []) {
+              if (output.token_category === input0Hash) {
+                genesisCategories.add(output.token_category.slice(2))
+              }
+            }
+            if (genesisCategories.size > 0) {
+              tokenCategoriesInTx = [...genesisCategories]
+            }
+          }
+        }
+      }
+
       setTokenInfo({
+        validTxId,
+        validTokenCategory,
+        tokenCategoriesInTx,
         genesisSupplyFT,
         totalSupplyFT,
         totalSupplyNFTs,
@@ -383,7 +420,54 @@ export default function Home() {
             onSearch={handleSearch}
           />
 
-          {tokenInfo && (
+          {tokenInfo && !tokenInfo.validTxId && (
+            <div style={{ marginTop: "20px", overflowWrap: "anywhere", maxWidth: "570px" }}>
+              <div className={styles.description}>
+                <div style={{ padding: "12px 16px", backgroundColor: "#e8f4fd", border: "1px solid #7ab8d9", borderRadius: "6px", color: "#1a1a1a" }}>
+                  This is not a valid CashTokens tokenId. No transaction with this hash was found on the blockchain.
+                </div>
+              </div>
+            </div>
+          )}
+
+          {tokenInfo && tokenInfo.validTxId && !tokenInfo.validTokenCategory && (
+            <div style={{ marginTop: "20px", overflowWrap: "anywhere", maxWidth: "570px" }}>
+              <div className={styles.description}>
+                <div style={{ padding: "12px 16px", backgroundColor: "#e8f4fd", border: "1px solid #7ab8d9", borderRadius: "6px", color: "#1a1a1a" }}>
+                  This is not a valid CashTokens tokenId. The transaction exists on-chain but no tokens were created with this ID.
+                  {tokenInfo.tokenCategoriesInTx && tokenInfo.tokenCategoriesInTx.length > 0 && (
+                    <div style={{ marginTop: "8px" }}>
+                      This is a genesis transaction for the following tokenId{tokenInfo.tokenCategoriesInTx.length > 1 ? 's' : ''}:
+                      {tokenInfo.tokenCategoriesInTx.map(cat => (
+                        <div key={cat} style={{ marginTop: "4px" }}>
+                          <a
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              setTokenId(cat)
+                              clearExistingInfo()
+                              setIsLoadingTokenInfo(true)
+                              lookUpTokenData(cat)
+                              fetchMetadata(cat)
+                              checkOtrStatus(cat)
+                              const params = new URLSearchParams(window.location.search)
+                              params.set("tokenId", cat)
+                              window.history.replaceState({}, "", `${location.pathname}?${params}`)
+                            }}
+                            style={{ textDecoration: "none", wordBreak: "break-all" }}
+                          >
+                            {cat}
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {tokenInfo && tokenInfo.validTokenCategory && (
             <div style={{ marginTop: "20px", overflowWrap: "anywhere", maxWidth: "570px" }}>
               <div className={styles.description}>
                 {tokenInfo.network === 'chipnet' && (

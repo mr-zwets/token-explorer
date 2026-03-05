@@ -34,6 +34,9 @@ export interface TokenInfo {
   numberTokenAddresses: number
   network: 'mainnet' | 'chipnet'
   authchainMigrations?: AuthchainEntry[]
+  validTxId: boolean
+  validTokenCategory: boolean
+  tokenCategoriesInTx?: string[]
 }
 
 export type DiagnosticType =

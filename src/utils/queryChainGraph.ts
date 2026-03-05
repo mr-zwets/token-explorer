@@ -22,12 +22,6 @@ export async function queryGenesisSupplyFT(tokenId:string){
         block_inclusions {
           block {
             timestamp
-            height
-            accepted_by {
-              node {
-                name
-              }
-            }
           }
         }
       }
@@ -95,6 +89,30 @@ export async function querySupplyNFTs(tokenId:string, offset:number =0){
   return (await chaingraphClient.query(queryReqTotalSupply, variables)).data
 }
 
+export async function queryGenesisCategories(txHash:string){
+  const queryReqTokenOutputs = graphql(`query TokenOutputs (
+    $txHash: bytea
+  ) {
+    transaction(
+      where: {
+        hash: {
+          _eq: $txHash
+        }
+      }
+    ) {
+      inputs(order_by: { input_index: asc }) {
+        outpoint_transaction_hash
+        outpoint_index
+      }
+      outputs(where: { token_category: { _is_null: false } }) {
+        token_category
+      }
+    }
+  }`);
+  const variables = { txHash: `\\x${txHash}` }
+  return (await chaingraphClient.query(queryReqTokenOutputs, variables)).data
+}
+
 export async function queryAuthchain(tokenId:string){
   const queryReqAuthHead = graphql(`query Authchain (
     $tokenId: bytea
@@ -107,6 +125,15 @@ export async function queryAuthchain(tokenId:string){
       }
     ) {
       hash
+      block_inclusions {
+        block {
+          accepted_by {
+            node {
+              name
+            }
+          }
+        }
+      }
       authchains {
         authhead {
           hash,
