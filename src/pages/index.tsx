@@ -23,11 +23,7 @@ export default function Home() {
     const params = new URLSearchParams(url.search)
     const readTokenId = params.get("tokenId")
     if (!readTokenId) return
-    setTokenId(readTokenId)
-    setIsLoadingTokenInfo(true)
-    lookUpTokenData(readTokenId)
-    fetchMetadata(readTokenId)
-    checkOtrStatus(readTokenId)
+    searchToken(readTokenId)
   }, [])
 
   useEffect(() => {
@@ -46,18 +42,18 @@ export default function Home() {
     if (tokenInfo) setIsLoadingTokenInfo(false)
   }, [tokenInfo])
 
-  function clearExistingInfo() {
+  function searchToken(id: string) {
+    setTokenId(id)
     setTokenInfo(undefined)
     setMetadataInfo(undefined)
     setTokenIconUri("")
-  }
-
-  function handleSearch() {
-    clearExistingInfo()
     setIsLoadingTokenInfo(true)
-    lookUpTokenData(tokenId)
-    fetchMetadata(tokenId)
-    checkOtrStatus(tokenId)
+    lookUpTokenData(id)
+    fetchMetadata(id)
+    checkOtrStatus(id)
+    const params = new URLSearchParams(window.location.search)
+    params.set("tokenId", id)
+    window.history.replaceState({}, "", `${location.pathname}?${params}`)
   }
 
   async function checkOtrStatus(tokenId: string) {
@@ -417,7 +413,7 @@ export default function Home() {
             isLoading={isLoadingTokenInfo}
             hasTokenInfo={!!tokenInfo}
             onTokenIdChange={setTokenId}
-            onSearch={handleSearch}
+            onSearch={() => searchToken(tokenId)}
           />
 
           {tokenInfo && !tokenInfo.validTxId && (
@@ -444,15 +440,7 @@ export default function Home() {
                             href="#"
                             onClick={(e) => {
                               e.preventDefault()
-                              setTokenId(cat)
-                              clearExistingInfo()
-                              setIsLoadingTokenInfo(true)
-                              lookUpTokenData(cat)
-                              fetchMetadata(cat)
-                              checkOtrStatus(cat)
-                              const params = new URLSearchParams(window.location.search)
-                              params.set("tokenId", cat)
-                              window.history.replaceState({}, "", `${location.pathname}?${params}`)
+                              searchToken(cat)
                             }}
                             style={{ textDecoration: "none", wordBreak: "break-all" }}
                           >
