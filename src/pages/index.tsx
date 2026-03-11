@@ -3,8 +3,8 @@ import styles from '@/styles/Home.module.css'
 import { BCMR } from '@mainnet-cash/bcmr'
 import { utf8ToBin, sha256, binToHex, hexToBin, lockingBytecodeToCashAddress } from '@bitauth/libauth'
 import { useEffect, useState } from 'react'
-import { queryGenesisSupplyFT, queryActiveMinting, querySupplyNFTs, queryAuthchain, queryAllTokenHolders, queryGenesisCategories } from '../utils/queryChainGraph'
-import { countUniqueHolders, calculateTotalSupplyFT, calculateCirculatingSupplyFT } from '../utils/calculations'
+import { queryGenesisSupplyFT, queryActiveMinting, queryAuthchain, queryAllTokenHolders, queryGenesisCategories } from '../utils/queryChainGraph'
+import { countUniqueHolders, calculateTotalSupplyFT, calculateReservedSupplyFT } from '../utils/calculations'
 import { checkOtrVerified } from '../utils/otrRegistry'
 import { IdentitySnapshotSchema } from '../utils/bcmrSchema'
 import type { TokenInfo, MetadataInfo, TokenMetadata, AuthchainEntry, Diagnostic } from '@/interfaces'
@@ -226,18 +226,16 @@ export default function Home() {
       const [
         respJsonGenesisSupply,
         respJsonAllTokenHolders,
-        respJsonSupplyNFTs,
         respJsonActiveMinting,
         respJsonAuthchain
       ] = await Promise.all([
         queryGenesisSupplyFT(tokenId),
         queryAllTokenHolders(tokenId),
-        querySupplyNFTs(tokenId),
         queryActiveMinting(tokenId),
         queryAuthchain(tokenId)
       ])
 
-      if (!respJsonGenesisSupply || !respJsonAllTokenHolders || !respJsonSupplyNFTs || !respJsonActiveMinting || !respJsonAuthchain) {
+      if (!respJsonGenesisSupply || !respJsonAllTokenHolders || !respJsonActiveMinting || !respJsonAuthchain) {
         throw new Error("Error in Chaingraph fetches")
       }
 
@@ -260,21 +258,24 @@ export default function Home() {
         )
       }
 
-      // Calculate totalSupplyNFTs with pagination
-      let totalSupplyNFTs = respJsonSupplyNFTs.output.length
+      // Paginate queryAllTokenHolders (returns max 5000 per page)
+      let allTokenOutputs = respJsonAllTokenHolders.output
+      let lastBatchSize = allTokenOutputs.length
       let indexOffset = 0
-      let fullListNftHolders = respJsonSupplyNFTs.output
 
-      while (totalSupplyNFTs === 5000) {
+      while (lastBatchSize === 5000) {
         indexOffset += 1
-        const respJsonSupplyNFTs2 = await querySupplyNFTs(tokenId, 5000 * indexOffset)
-        if (!respJsonSupplyNFTs2) throw new Error("Error in querySupplyNFTs")
-        fullListNftHolders = fullListNftHolders.concat(respJsonSupplyNFTs2.output)
-        totalSupplyNFTs += respJsonSupplyNFTs2.output.length
+        const nextPage = await queryAllTokenHolders(tokenId, 5000 * indexOffset)
+        if (!nextPage) throw new Error("Error in queryAllTokenHolders pagination")
+        allTokenOutputs = allTokenOutputs.concat(nextPage.output)
+        lastBatchSize = nextPage.output.length
       }
 
-      // Count minting NFTs
-      const mintingNFTs = fullListNftHolders.filter(
+      // Calculate totalSupplyNFTs and count minting NFTs
+      const totalSupplyNFTs = allTokenOutputs.filter(
+        (o: { nonfungible_token_capability: string | null }) => o.nonfungible_token_capability !== null
+      ).length
+      const mintingNFTs = allTokenOutputs.filter(
         (o: { nonfungible_token_capability: string | null }) => o.nonfungible_token_capability === 'minting'
       ).length
 
@@ -288,7 +289,7 @@ export default function Home() {
 
       const authchainLength = authchainData?.authchain_length ?? 0
       const authHead = authheadData?.hash?.slice(2) ?? ''
-      const reservedSupplyFT = +(identityOutput?.fungible_token_amount ?? 0)
+      const authheadReservedFT = +(identityOutput?.fungible_token_amount ?? 0)
       const authHeadLockingBytecode = identityOutput?.locking_bytecode as string | undefined
 
       // Parse authhead timestamp and check if it's a metadata update
@@ -333,12 +334,12 @@ export default function Home() {
       const filteredMigrations = genesisIndex >= 0 ? authchainMigrations.slice(genesisIndex) : authchainMigrations
 
       // Calculate supply stats
-      const totalSupplyFT = calculateTotalSupplyFT(respJsonAllTokenHolders.output)
-      const circulatingSupplyFT = calculateCirculatingSupplyFT(respJsonAllTokenHolders.output, reservedSupplyFT)
+      const totalSupplyFT = calculateTotalSupplyFT(allTokenOutputs)
+      const reservedSupplyFT = calculateReservedSupplyFT(allTokenOutputs, authheadReservedFT)
+      const circulatingSupplyFT = totalSupplyFT - reservedSupplyFT
 
       // Calculate holder stats
-      const listHoldingAddresses = genesisSupplyFT ? respJsonAllTokenHolders.output : fullListNftHolders
-      const { numberHolders, numberTokenAddresses } = countUniqueHolders(listHoldingAddresses)
+      const { numberHolders, numberTokenAddresses, issuingCovenantUtxos } = countUniqueHolders(allTokenOutputs)
 
       // A valid token category must have tokens created with it
       const validTokenCategory = genesisSupplyFT > 0 || totalSupplyNFTs > 0
@@ -386,6 +387,7 @@ export default function Home() {
         reservedSupplyFT,
         numberHolders,
         numberTokenAddresses,
+        issuingCovenantUtxos,
         network,
         authchainMigrations: filteredMigrations
       })

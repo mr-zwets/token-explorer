@@ -32,6 +32,7 @@ export interface TokenInfo {
   usesAuthGuard?: boolean
   numberHolders: number
   numberTokenAddresses: number
+  issuingCovenantUtxos: number
   network: 'mainnet' | 'chipnet'
   authchainMigrations?: AuthchainEntry[]
   validTxId: boolean

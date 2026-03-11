@@ -30,11 +30,13 @@ export async function queryGenesisSupplyFT(tokenId:string){
   return (await chaingraphClient.query(queryReqGenesisSupply, variables)).data
 }
 
-export async function queryAllTokenHolders(tokenId:string){
+export async function queryAllTokenHolders(tokenId:string, offset:number = 0){
   const queryReqTotalSupply = graphql(`query TotalSupplyFT (
+    $offset: Int,
     $tokenId: bytea
   ) {
       output(
+        offset: $offset
         where: {
           token_category: { _eq: $tokenId }
           _not: { spent_by: {} }
@@ -45,7 +47,7 @@ export async function queryAllTokenHolders(tokenId:string){
         nonfungible_token_capability
       }
     }`);
-  const variables = { tokenId: `\\x${tokenId}` }
+  const variables = { tokenId: `\\x${tokenId}`, offset }
   return (await chaingraphClient.query(queryReqTotalSupply, variables)).data
 }
 
@@ -67,27 +69,6 @@ export async function queryActiveMinting(tokenId:string){
   return (await chaingraphClient.query(queryReqActiveMinting, variables)).data
 }
 
-export async function querySupplyNFTs(tokenId:string, offset:number =0){
-  const queryReqTotalSupply = graphql(`query SupplyNFTs (
-    $offset: Int,
-    $tokenId: bytea
-  ) {
-      output(
-        offset: $offset
-        where: {
-          token_category: {
-            _eq: $tokenId
-          }
-          _not: { spent_by: {} }
-        }
-      ) {
-        locking_bytecode,
-        nonfungible_token_capability
-      }
-  }`);
-  const variables = { tokenId: `\\x${tokenId}`, offset }
-  return (await chaingraphClient.query(queryReqTotalSupply, variables)).data
-}
 
 export async function queryGenesisCategories(txHash:string){
   const queryReqTokenOutputs = graphql(`query TokenOutputs (

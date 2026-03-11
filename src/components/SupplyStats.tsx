@@ -68,8 +68,13 @@ export function SupplyStats({ tokenInfo, metadataInfo }: SupplyStatsProps) {
     return amountDecimals.toLocaleString("en-GB") + ' ' + symbol
   }
 
-  const toPercentage = (decimalNumber: number) =>
-    (Math.round(decimalNumber * 10000) / 100).toFixed(2)
+  const toPercentage = (decimalNumber: number) => {
+    const pct = decimalNumber * 100
+    if (pct === 0 || pct === 100) return pct.toFixed(2)
+    if (pct < 0.01) return pct.toPrecision(2)
+    if (pct > 99.99) return (100 - Number((100 - pct).toPrecision(2))).toString()
+    return pct.toFixed(2)
+  }
 
   const getTokenType = () => {
     if (tokenInfo.genesisSupplyFT && !tokenInfo.totalSupplyNFTs) return " Fungible Token"
@@ -92,16 +97,6 @@ export function SupplyStats({ tokenInfo, metadataInfo }: SupplyStatsProps) {
         </>
       )}
 
-      {tokenInfo.totalSupplyNFTs > 0 && (
-        <>
-          total amount NFTs: {tokenInfo.totalSupplyNFTs.toLocaleString("en-GB")}
-          {tokenInfo.mintingNFTs > 0 && (
-            <> (incl. {tokenInfo.mintingNFTs} minting NFT{tokenInfo.mintingNFTs > 1 ? 's' : ''})</>
-          )}
-          <br /><br />
-        </>
-      )}
-
       {metadataInfo?.tokenMetadata && tokenInfo.genesisSupplyFT > 0 && (
         <>
           {tokenInfo.genesisSupplyFT > tokenInfo.totalSupplyFT && (
@@ -118,6 +113,12 @@ export function SupplyStats({ tokenInfo, metadataInfo }: SupplyStatsProps) {
               {` (${toPercentage((tokenInfo.totalSupplyFT - tokenInfo.reservedSupplyFT) / tokenInfo.totalSupplyFT)}%)`}<br /><br />
               reserved supply: {displayTokenAmount(tokenInfo.reservedSupplyFT)}
               {` (${toPercentage(tokenInfo.reservedSupplyFT / tokenInfo.totalSupplyFT)}%)`}<br /><br />
+              {tokenInfo.issuingCovenantUtxos > 0 ? (
+                <>reserved supply held on {tokenInfo.issuingCovenantUtxos} issuing covenant UTXO{tokenInfo.issuingCovenantUtxos > 1 ? 's' : ''}</>
+              ) : (
+                <>reserved supply held on identity output</>
+              )}
+              <br /><br />
             </>
           ) : (
             <>No reserved supply (full supply circulating)<br /><br /></>
@@ -127,6 +128,11 @@ export function SupplyStats({ tokenInfo, metadataInfo }: SupplyStatsProps) {
 
       {tokenInfo.totalSupplyNFTs > 0 && (
         <>
+          total amount NFTs: {tokenInfo.totalSupplyNFTs.toLocaleString("en-GB")}
+          {tokenInfo.mintingNFTs > 0 && (
+            <> (incl. {tokenInfo.mintingNFTs} minting NFT{tokenInfo.mintingNFTs > 1 ? 's' : ''})</>
+          )}
+          <br /><br />
           has active minting NFT: {tokenInfo.hasActiveMintingToken ? "yes" : "no"} <br /><br />
         </>
       )}

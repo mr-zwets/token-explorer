@@ -72,6 +72,12 @@ The app detects chipnet vs mainnet from the node name in the genesis transaction
 
 When verification fails or metadata can't be fetched, `fetchMetadata()` populates a `diagnostics` array on `MetadataInfo` with structured errors (type, message, details). Error classification is IPFS-aware. The `DiagnosticsSection` component renders these in an expandable details block.
 
+### Reserved & Circulating Supply
+
+Reserved supply = FT held on unspent outputs carrying a **minting or mutable** NFT of the same category (issuing covenant UTXOs) + FT on the authhead identity output. Circulating supply = total supply − reserved. Calculation logic is in `src/utils/calculations.ts` (`calculateReservedSupplyFT`).
+
+`queryAllTokenHolders` is paginated (5000 per page) and is the single source for all supply calculations, holder counts, NFT counts, and issuing covenant UTXO counts.
+
 ### Token Data Types
 
 The explorer handles three token scenarios:
