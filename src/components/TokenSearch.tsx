@@ -45,7 +45,7 @@ export function TokenSearch({
       />
       {isLoading && !hasTokenInfo && (
         <div className={styles.description} style={{ marginTop: "20px" }}>
-          loading on-chain tokenInfo...
+          loading token info...
         </div>
       )}
     </>

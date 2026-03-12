@@ -2,7 +2,7 @@ import Head from 'next/head'
 import styles from '@/styles/Home.module.css'
 import { BCMR } from '@mainnet-cash/bcmr'
 import { utf8ToBin, sha256, binToHex, hexToBin, lockingBytecodeToCashAddress } from '@bitauth/libauth'
-import { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { queryGenesisSupplyFT, queryActiveMinting, queryAuthchain, queryAllTokenHolders, queryGenesisCategories } from '../utils/queryChainGraph'
 import { countUniqueHolders, calculateTotalSupplyFT, calculateReservedSupplyFT } from '../utils/calculations'
 import { checkOtrVerified } from '../utils/otrRegistry'
@@ -45,6 +45,9 @@ export default function Home() {
     }
   }, [tokenInfo])
 
+  // Resolves when metadata has been set, so lookUpTokenData can wait briefly for it
+  const metadataReadyRef = useRef<{ resolve: () => void } | null>(null)
+
   function searchToken(id: string) {
     setTokenId(id)
     setTokenInfo(undefined)
@@ -52,7 +55,10 @@ export default function Home() {
     setMetadataInfo(undefined)
     setTokenIconUri("")
     setIsLoadingTokenInfo(true)
-    lookUpTokenData(id)
+    const metadataReadyPromise = new Promise<void>(resolve => {
+      metadataReadyRef.current = { resolve }
+    })
+    lookUpTokenData(id, metadataReadyPromise)
     fetchMetadata(id)
     checkOtrStatus(id)
     const params = new URLSearchParams(window.location.search)
@@ -223,9 +229,10 @@ export default function Home() {
       authchainHistory,
       diagnostics: diagnostics.length > 0 ? diagnostics : undefined
     }))
+    metadataReadyRef.current?.resolve()
   }
 
-  async function lookUpTokenData(tokenId: string) {
+  async function lookUpTokenData(tokenId: string, metadataReady: Promise<void>) {
     try {
       // Start all queries in parallel, but don't block on the slow holder query
       console.time('initialDataLoad')
@@ -322,6 +329,12 @@ export default function Home() {
       // For FT tokens (genesisSupplyFT > 0), we know it's valid immediately
       console.timeEnd('initialDataLoad')
       const initialValidTokenCategory = genesisSupplyFT > 0 ? true : undefined
+
+      // Wait up to 200ms for metadata to arrive, to avoid a flash of content without metadata
+      await Promise.race([
+        metadataReady,
+        new Promise(resolve => setTimeout(resolve, 200))
+      ])
 
       setTokenInfo({
         validTxId,
