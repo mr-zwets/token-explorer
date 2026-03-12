@@ -15,29 +15,32 @@ export interface AuthchainEntry {
 }
 
 export interface TokenInfo {
-  genesisSupplyFT:number;
-  genesisTxTimestamp:number | undefined;
-  totalSupplyFT:number;
-  circulatingSupplyFT:number;
-  reservedSupplyFT:number;
-  totalSupplyNFTs:number;
-  mintingNFTs:number;
-  hasActiveMintingToken:boolean;
-  genesisTx: string,
+  genesisSupplyFT: number
+  genesisTxTimestamp: number | undefined
+  hasActiveMintingToken: boolean
+  genesisTx: string
   authchainLength?: number
   authHead?: string
   authHeadAddress?: string
   authHeadTimestamp?: number
   authHeadIsMetadataUpdate?: boolean
   usesAuthGuard?: boolean
-  numberHolders: number
-  numberTokenAddresses: number
-  issuingCovenantUtxos: number
   network: 'mainnet' | 'chipnet'
   authchainMigrations?: AuthchainEntry[]
   validTxId: boolean
-  validTokenCategory: boolean
+  validTokenCategory?: boolean
   tokenCategoriesInTx?: string[]
+}
+
+export interface ExtendedTokenInfo {
+  totalSupplyFT: number
+  circulatingSupplyFT: number
+  reservedSupplyFT: number
+  totalSupplyNFTs: number
+  mintingNFTs: number
+  numberHolders: number
+  numberTokenAddresses: number
+  issuingCovenantUtxos: number
 }
 
 export type DiagnosticType =

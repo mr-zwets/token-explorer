@@ -7,7 +7,7 @@ import { queryGenesisSupplyFT, queryActiveMinting, queryAuthchain, queryAllToken
 import { countUniqueHolders, calculateTotalSupplyFT, calculateReservedSupplyFT } from '../utils/calculations'
 import { checkOtrVerified } from '../utils/otrRegistry'
 import { IdentitySnapshotSchema } from '../utils/bcmrSchema'
-import type { TokenInfo, MetadataInfo, TokenMetadata, AuthchainEntry, Diagnostic } from '@/interfaces'
+import type { TokenInfo, ExtendedTokenInfo, MetadataInfo, TokenMetadata, AuthchainEntry, Diagnostic } from '@/interfaces'
 import { CHAINGRAPH_URL, IPFS_GATEWAY } from '@/constants'
 import { TokenSearch, MetadataDisplay, SupplyStats, AuthchainInfo } from '@/components'
 
@@ -15,6 +15,7 @@ export default function Home() {
   const [tokenId, setTokenId] = useState<string>("")
   const [isLoadingTokenInfo, setIsLoadingTokenInfo] = useState<boolean>(false)
   const [tokenInfo, setTokenInfo] = useState<TokenInfo>()
+  const [extendedTokenInfo, setExtendedTokenInfo] = useState<ExtendedTokenInfo>()
   const [metadataInfo, setMetadataInfo] = useState<MetadataInfo>()
   const [tokenIconUri, setTokenIconUri] = useState<string>("")
 
@@ -39,12 +40,15 @@ export default function Home() {
   }, [metadataInfo])
 
   useEffect(() => {
-    if (tokenInfo) setIsLoadingTokenInfo(false)
+    if (tokenInfo && (tokenInfo.validTokenCategory !== undefined || !tokenInfo.validTxId)) {
+      setIsLoadingTokenInfo(false)
+    }
   }, [tokenInfo])
 
   function searchToken(id: string) {
     setTokenId(id)
     setTokenInfo(undefined)
+    setExtendedTokenInfo(undefined)
     setMetadataInfo(undefined)
     setTokenIconUri("")
     setIsLoadingTokenInfo(true)
@@ -223,19 +227,21 @@ export default function Home() {
 
   async function lookUpTokenData(tokenId: string) {
     try {
+      // Start all queries in parallel, but don't block on the slow holder query
+      console.time('initialDataLoad')
+      const holderDataPromise = queryAllTokenHolders(tokenId)
+
       const [
         respJsonGenesisSupply,
-        respJsonAllTokenHolders,
         respJsonActiveMinting,
         respJsonAuthchain
       ] = await Promise.all([
         queryGenesisSupplyFT(tokenId),
-        queryAllTokenHolders(tokenId),
         queryActiveMinting(tokenId),
         queryAuthchain(tokenId)
       ])
 
-      if (!respJsonGenesisSupply || !respJsonAllTokenHolders || !respJsonActiveMinting || !respJsonAuthchain) {
+      if (!respJsonGenesisSupply || !respJsonActiveMinting || !respJsonAuthchain) {
         throw new Error("Error in Chaingraph fetches")
       }
 
@@ -257,27 +263,6 @@ export default function Home() {
           0
         )
       }
-
-      // Paginate queryAllTokenHolders (returns max 5000 per page)
-      let allTokenOutputs = respJsonAllTokenHolders.output
-      let lastBatchSize = allTokenOutputs.length
-      let indexOffset = 0
-
-      while (lastBatchSize === 5000) {
-        indexOffset += 1
-        const nextPage = await queryAllTokenHolders(tokenId, 5000 * indexOffset)
-        if (!nextPage) throw new Error("Error in queryAllTokenHolders pagination")
-        allTokenOutputs = allTokenOutputs.concat(nextPage.output)
-        lastBatchSize = nextPage.output.length
-      }
-
-      // Calculate totalSupplyNFTs and count minting NFTs
-      const totalSupplyNFTs = allTokenOutputs.filter(
-        (o: { nonfungible_token_capability: string | null }) => o.nonfungible_token_capability !== null
-      ).length
-      const mintingNFTs = allTokenOutputs.filter(
-        (o: { nonfungible_token_capability: string | null }) => o.nonfungible_token_capability === 'minting'
-      ).length
 
       // Parse hasActiveMintingToken
       const hasActiveMintingToken = Boolean(respJsonActiveMinting.output.length)
@@ -333,6 +318,57 @@ export default function Home() {
       const genesisIndex = authchainMigrations.findIndex(m => m.txHash === genesisTx)
       const filteredMigrations = genesisIndex >= 0 ? authchainMigrations.slice(genesisIndex) : authchainMigrations
 
+      // Phase 1: set initial tokenInfo from fast queries
+      // For FT tokens (genesisSupplyFT > 0), we know it's valid immediately
+      console.timeEnd('initialDataLoad')
+      const initialValidTokenCategory = genesisSupplyFT > 0 ? true : undefined
+
+      setTokenInfo({
+        validTxId,
+        validTokenCategory: initialValidTokenCategory,
+        genesisSupplyFT,
+        hasActiveMintingToken,
+        genesisTx,
+        genesisTxTimestamp,
+        authchainLength,
+        authHead,
+        authHeadAddress,
+        authHeadTimestamp,
+        authHeadIsMetadataUpdate,
+        usesAuthGuard,
+        network,
+        authchainMigrations: filteredMigrations
+      })
+
+      // Phase 2: await holder data (already started in parallel)
+      console.time('queryAllTokenHolders')
+      const respJsonAllTokenHolders = await holderDataPromise
+      console.timeEnd('queryAllTokenHolders')
+      if (!respJsonAllTokenHolders) throw new Error("Error in queryAllTokenHolders")
+
+      // Paginate queryAllTokenHolders (returns max 5000 per page)
+      let allTokenOutputs = respJsonAllTokenHolders.output
+      let lastBatchSize = allTokenOutputs.length
+      let indexOffset = 0
+
+      while (lastBatchSize === 5000) {
+        indexOffset += 1
+        console.time(`queryAllTokenHolders page ${indexOffset + 1}`)
+        const nextPage = await queryAllTokenHolders(tokenId, 5000 * indexOffset)
+        console.timeEnd(`queryAllTokenHolders page ${indexOffset + 1}`)
+        if (!nextPage) throw new Error("Error in queryAllTokenHolders pagination")
+        allTokenOutputs = allTokenOutputs.concat(nextPage.output)
+        lastBatchSize = nextPage.output.length
+      }
+
+      // Calculate totalSupplyNFTs and count minting NFTs
+      const totalSupplyNFTs = allTokenOutputs.filter(
+        (o: { nonfungible_token_capability: string | null }) => o.nonfungible_token_capability !== null
+      ).length
+      const mintingNFTs = allTokenOutputs.filter(
+        (o: { nonfungible_token_capability: string | null }) => o.nonfungible_token_capability === 'minting'
+      ).length
+
       // Calculate supply stats
       const totalSupplyFT = calculateTotalSupplyFT(allTokenOutputs)
       const reservedSupplyFT = calculateReservedSupplyFT(allTokenOutputs, authheadReservedFT)
@@ -366,30 +402,23 @@ export default function Home() {
         }
       }
 
-      setTokenInfo({
-        validTxId,
+      // Update validTokenCategory on tokenInfo
+      setTokenInfo(prev => prev ? {
+        ...prev,
         validTokenCategory,
         tokenCategoriesInTx,
-        genesisSupplyFT,
+      } : prev)
+
+      // Set extended token info (supply & holder data)
+      setExtendedTokenInfo({
         totalSupplyFT,
         totalSupplyNFTs,
         mintingNFTs,
-        hasActiveMintingToken,
-        genesisTx,
-        genesisTxTimestamp,
-        authchainLength,
-        authHead,
-        authHeadAddress,
-        authHeadTimestamp,
-        authHeadIsMetadataUpdate,
-        usesAuthGuard,
         circulatingSupplyFT,
         reservedSupplyFT,
         numberHolders,
         numberTokenAddresses,
         issuingCovenantUtxos,
-        network,
-        authchainMigrations: filteredMigrations
       })
     } catch (error) {
       console.log(error)
@@ -428,7 +457,7 @@ export default function Home() {
             </div>
           )}
 
-          {tokenInfo && tokenInfo.validTxId && !tokenInfo.validTokenCategory && (
+          {tokenInfo && tokenInfo.validTxId && tokenInfo.validTokenCategory === false && (
             <div style={{ marginTop: "20px", overflowWrap: "anywhere", maxWidth: "570px" }}>
               <div className={styles.description}>
                 <div style={{ padding: "12px 16px", backgroundColor: "#e8f4fd", border: "1px solid #7ab8d9", borderRadius: "6px", color: "#1a1a1a" }}>
@@ -471,6 +500,7 @@ export default function Home() {
                 />
                 <SupplyStats
                   tokenInfo={tokenInfo}
+                  extendedInfo={extendedTokenInfo}
                   metadataInfo={metadataInfo}
                 />
                 <AuthchainInfo

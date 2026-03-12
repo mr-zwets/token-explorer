@@ -1,7 +1,8 @@
-import type { TokenInfo, MetadataInfo, NftCategory } from '@/interfaces'
+import type { TokenInfo, ExtendedTokenInfo, MetadataInfo, NftCategory } from '@/interfaces'
 
 interface SupplyStatsProps {
   tokenInfo: TokenInfo
+  extendedInfo: ExtendedTokenInfo | undefined
   metadataInfo: MetadataInfo | undefined
 }
 
@@ -58,7 +59,7 @@ function NftParseDetails({ nfts }: { nfts: NftCategory }) {
   )
 }
 
-export function SupplyStats({ tokenInfo, metadataInfo }: SupplyStatsProps) {
+export function SupplyStats({ tokenInfo, extendedInfo, metadataInfo }: SupplyStatsProps) {
   const decimals = metadataInfo?.tokenMetadata?.token?.decimals ?? 0
   const symbol = metadataInfo?.tokenMetadata?.token?.symbol ?? ''
   const nfts = metadataInfo?.tokenMetadata?.token?.nfts
@@ -77,9 +78,9 @@ export function SupplyStats({ tokenInfo, metadataInfo }: SupplyStatsProps) {
   }
 
   const getTokenType = () => {
-    if (tokenInfo.genesisSupplyFT && !tokenInfo.totalSupplyNFTs) return " Fungible Token"
-    if (!tokenInfo.genesisSupplyFT && tokenInfo.totalSupplyNFTs) return " NFTs"
-    if (tokenInfo.genesisSupplyFT && tokenInfo.totalSupplyNFTs) return " Both Fungible & Non-Fungible tokens"
+    if (tokenInfo.genesisSupplyFT && !extendedInfo?.totalSupplyNFTs) return " Fungible Token"
+    if (!tokenInfo.genesisSupplyFT && extendedInfo?.totalSupplyNFTs) return " NFTs"
+    if (tokenInfo.genesisSupplyFT && extendedInfo?.totalSupplyNFTs) return " Both Fungible & Non-Fungible tokens"
     return ""
   }
 
@@ -99,38 +100,44 @@ export function SupplyStats({ tokenInfo, metadataInfo }: SupplyStatsProps) {
 
       {metadataInfo?.tokenMetadata && tokenInfo.genesisSupplyFT > 0 && (
         <>
-          {tokenInfo.genesisSupplyFT > tokenInfo.totalSupplyFT && (
+          {extendedInfo ? (
             <>
-              <span><i>NOTE:</i> burn calculations might be inaccurate</span><br />
-              <span>burned: {displayTokenAmount(Math.max(0, tokenInfo.genesisSupplyFT - tokenInfo.totalSupplyFT))}</span>
-              <div>supply excluding burns: {displayTokenAmount(tokenInfo.genesisSupplyFT - Math.max(0, tokenInfo.genesisSupplyFT - tokenInfo.totalSupplyFT))}</div><br />
-            </>
-          )}
-
-          {tokenInfo.reservedSupplyFT ? (
-            <>
-              circulating supply: {displayTokenAmount(tokenInfo.totalSupplyFT - tokenInfo.reservedSupplyFT)}
-              {` (${toPercentage((tokenInfo.totalSupplyFT - tokenInfo.reservedSupplyFT) / tokenInfo.totalSupplyFT)}%)`}<br /><br />
-              reserved supply: {displayTokenAmount(tokenInfo.reservedSupplyFT)}
-              {` (${toPercentage(tokenInfo.reservedSupplyFT / tokenInfo.totalSupplyFT)}%)`}<br /><br />
-              {tokenInfo.issuingCovenantUtxos > 0 ? (
-                <>reserved supply held on {tokenInfo.issuingCovenantUtxos} issuing covenant UTXO{tokenInfo.issuingCovenantUtxos > 1 ? 's' : ''}</>
-              ) : (
-                <>reserved supply held on identity output</>
+              {tokenInfo.genesisSupplyFT > extendedInfo.totalSupplyFT && (
+                <>
+                  <span><i>NOTE:</i> burn calculations might be inaccurate</span><br />
+                  <span>burned: {displayTokenAmount(Math.max(0, tokenInfo.genesisSupplyFT - extendedInfo.totalSupplyFT))}</span>
+                  <div>supply excluding burns: {displayTokenAmount(tokenInfo.genesisSupplyFT - Math.max(0, tokenInfo.genesisSupplyFT - extendedInfo.totalSupplyFT))}</div><br />
+                </>
               )}
-              <br /><br />
+
+              {extendedInfo.reservedSupplyFT ? (
+                <>
+                  circulating supply: {displayTokenAmount(extendedInfo.totalSupplyFT - extendedInfo.reservedSupplyFT)}
+                  {` (${toPercentage((extendedInfo.totalSupplyFT - extendedInfo.reservedSupplyFT) / extendedInfo.totalSupplyFT)}%)`}<br /><br />
+                  reserved supply: {displayTokenAmount(extendedInfo.reservedSupplyFT)}
+                  {` (${toPercentage(extendedInfo.reservedSupplyFT / extendedInfo.totalSupplyFT)}%)`}<br /><br />
+                  {extendedInfo.issuingCovenantUtxos > 0 ? (
+                    <>reserved supply held on {extendedInfo.issuingCovenantUtxos} issuing covenant UTXO{extendedInfo.issuingCovenantUtxos > 1 ? 's' : ''}</>
+                  ) : (
+                    <>reserved supply held on identity output</>
+                  )}
+                  <br /><br />
+                </>
+              ) : (
+                <>No reserved supply (full supply circulating)<br /><br /></>
+              )}
             </>
           ) : (
-            <>No reserved supply (full supply circulating)<br /><br /></>
+            <>loading supply data...<br /><br /></>
           )}
         </>
       )}
 
-      {tokenInfo.totalSupplyNFTs > 0 && (
+      {extendedInfo && extendedInfo.totalSupplyNFTs > 0 && (
         <>
-          total amount NFTs: {tokenInfo.totalSupplyNFTs.toLocaleString("en-GB")}
-          {tokenInfo.mintingNFTs > 0 && (
-            <> (incl. {tokenInfo.mintingNFTs} minting NFT{tokenInfo.mintingNFTs > 1 ? 's' : ''})</>
+          total amount NFTs: {extendedInfo.totalSupplyNFTs.toLocaleString("en-GB")}
+          {extendedInfo.mintingNFTs > 0 && (
+            <> (incl. {extendedInfo.mintingNFTs} minting NFT{extendedInfo.mintingNFTs > 1 ? 's' : ''})</>
           )}
           <br /><br />
           has active minting NFT: {tokenInfo.hasActiveMintingToken ? "yes" : "no"} <br /><br />
@@ -139,9 +146,15 @@ export function SupplyStats({ tokenInfo, metadataInfo }: SupplyStatsProps) {
 
       {metadataInfo?.httpsUrl && (
         <>
-          number of user-addresses holding {symbol || 'the token'}: {tokenInfo.numberHolders.toLocaleString("en-GB")}<br /><br />
-          number of smart contract addresses holding {symbol || 'the token'}: {(tokenInfo.numberTokenAddresses - tokenInfo.numberHolders).toLocaleString("en-GB")}<br /><br />
-          total number of addresses holding {symbol || 'the token'}: {tokenInfo.numberTokenAddresses.toLocaleString("en-GB")}<br /><br />
+          {extendedInfo ? (
+            <>
+              number of user-addresses holding {symbol || 'the token'}: {extendedInfo.numberHolders.toLocaleString("en-GB")}<br /><br />
+              number of smart contract addresses holding {symbol || 'the token'}: {(extendedInfo.numberTokenAddresses - extendedInfo.numberHolders).toLocaleString("en-GB")}<br /><br />
+              total number of addresses holding {symbol || 'the token'}: {extendedInfo.numberTokenAddresses.toLocaleString("en-GB")}<br /><br />
+            </>
+          ) : (
+            <>loading holder data...<br /><br /></>
+          )}
         </>
       )}
     </>
