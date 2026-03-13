@@ -7,7 +7,7 @@ import { queryGenesisInfo, queryIssuingUtxos, queryAuthchain, queryAllTokenHolde
 import { countUniqueHolders, calculateTotalSupplyFT } from '../utils/calculations'
 import { checkOtrVerified } from '../utils/otrRegistry'
 import { IdentitySnapshotSchema } from '../utils/bcmrSchema'
-import type { TokenInfo, ExtendedTokenInfo, MetadataInfo, TokenMetadata, AuthchainEntry, Diagnostic } from '@/interfaces'
+import type { TokenInfo, ExtendedTokenInfo, MetadataInfo, TokenMetadata, AuthchainEntry, Diagnostic, ReservedSupplyUtxo } from '@/interfaces'
 import { CHAINGRAPH_URL, IPFS_GATEWAY } from '@/constants'
 import { TokenSearch, MetadataDisplay, SupplyStats, AuthchainInfo } from '@/components'
 
@@ -275,17 +275,17 @@ export default function Home() {
         )
       }
 
-      // Parse issuing covenant data (minting + mutable NFT UTXOs)
-      const issuingOutputs = respJsonIssuingUtxos.output
-      const hasActiveMintingToken = issuingOutputs.some(
-        o => o.nonfungible_token_capability === "minting"
-      )
-      const mintingNFTs = issuingOutputs.filter(
-        o => o.nonfungible_token_capability === "minting"
-      ).length
-      const issuingCovenantUtxos = issuingOutputs.length
-      const covenantReservedFT = issuingOutputs.reduce(
-        (total, o) => total + parseInt(o.fungible_token_amount ?? "0"), 0
+      // Parse reserved supply UTXOs (minting + mutable NFT UTXOs)
+      const reservedSupplyUtxos: ReservedSupplyUtxo[] = respJsonIssuingUtxos.output.map(o => ({
+        txHash: (o.transaction_hash as string).slice(2),
+        vout: Number(o.output_index),
+        lockingBytecode: (o.locking_bytecode as string).slice(2),
+        fungibleTokenAmount: parseInt(o.fungible_token_amount ?? "0"),
+        nftCapability: o.nonfungible_token_capability as 'minting' | 'mutable'
+      }))
+      const hasActiveMintingToken = reservedSupplyUtxos.some(u => u.nftCapability === "minting")
+      const covenantReservedFT = reservedSupplyUtxos.reduce(
+        (total, u) => total + u.fungibleTokenAmount, 0
       )
 
       // Parse authchain data with intermediate variables
@@ -379,8 +379,7 @@ export default function Home() {
         hasGenesisNFTs,
         genesisSupplyFT,
         hasActiveMintingToken,
-        mintingNFTs,
-        issuingCovenantUtxos,
+        reservedSupplyUtxos,
         reservedSupplyFT,
         genesisTx,
         genesisTxTimestamp,

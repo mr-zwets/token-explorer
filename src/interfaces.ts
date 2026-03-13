@@ -14,13 +14,20 @@ export interface AuthchainEntry {
   opReturnHex?: string
 }
 
+export interface ReservedSupplyUtxo {
+  txHash: string
+  vout: number
+  lockingBytecode: string
+  fungibleTokenAmount: number
+  nftCapability: 'minting' | 'mutable'
+}
+
 export interface TokenInfo {
   genesisSupplyFT: number
   hasGenesisNFTs: boolean
   genesisTxTimestamp: number | undefined
   hasActiveMintingToken: boolean
-  mintingNFTs: number
-  issuingCovenantUtxos: number
+  reservedSupplyUtxos: ReservedSupplyUtxo[]
   reservedSupplyFT: number
   genesisTx: string
   authchainLength?: number

@@ -116,12 +116,72 @@ export function SupplyStats({ tokenInfo, extendedInfo, metadataInfo }: SupplySta
                   {` (${toPercentage((extendedInfo.totalSupplyFT - tokenInfo.reservedSupplyFT) / extendedInfo.totalSupplyFT)}%)`}<br /><br />
                   reserved supply: {displayTokenAmount(tokenInfo.reservedSupplyFT)}
                   {` (${toPercentage(tokenInfo.reservedSupplyFT / extendedInfo.totalSupplyFT)}%)`}<br /><br />
-                  {tokenInfo.issuingCovenantUtxos > 0 ? (
-                    <>reserved supply held on {tokenInfo.issuingCovenantUtxos} issuing covenant UTXO{tokenInfo.issuingCovenantUtxos > 1 ? 's' : ''}</>
-                  ) : (
-                    <>reserved supply held on identity output</>
-                  )}
-                  <br /><br />
+                  {(() => {
+                    const covenantUtxos = tokenInfo.reservedSupplyUtxos.filter(u => !u.lockingBytecode.startsWith('76a914'))
+                    const p2pkhUtxos = tokenInfo.reservedSupplyUtxos.filter(u => u.lockingBytecode.startsWith('76a914'))
+                    const summaryParts: string[] = []
+                    if (covenantUtxos.length > 0) summaryParts.push(`${covenantUtxos.length} issuing covenant UTXO${covenantUtxos.length > 1 ? 's' : ''}`)
+                    if (p2pkhUtxos.length > 0) summaryParts.push(`${p2pkhUtxos.length} P2PKH UTXO${p2pkhUtxos.length > 1 ? 's' : ''}`)
+                    if (summaryParts.length === 0) return <>reserved supply held on identity output<br /><br /></>
+                    return (
+                      <details>
+                        <summary style={{ cursor: 'pointer' }}>reserved supply held on {summaryParts.join(' and ')}</summary>
+                        <div style={{ marginTop: '8px', marginLeft: '8px' }}>
+                          {tokenInfo.reservedSupplyUtxos.map(u => {
+                            const isAuthhead = u.txHash === tokenInfo.authHead
+                            const isCovenant = !u.lockingBytecode.startsWith('76a914')
+                            return (
+                              <div key={`${u.txHash}:${u.vout}`} style={{ marginBottom: '14px', paddingLeft: '8px', borderLeft: '2px solid #ccc', lineHeight: '1.6' }}>
+                                <div>
+                                  <span style={{
+                                    display: 'inline-block',
+                                    padding: '1px 6px',
+                                    fontSize: '0.85em',
+                                    borderRadius: '4px',
+                                    backgroundColor: u.nftCapability === 'minting' ? '#d4edda' : '#fff3cd',
+                                    color: u.nftCapability === 'minting' ? '#155724' : '#856404'
+                                  }}>
+                                    {u.nftCapability}
+                                  </span>
+                                  {isCovenant && (
+                                    <span style={{
+                                      display: 'inline-block',
+                                      padding: '1px 6px',
+                                      fontSize: '0.85em',
+                                      borderRadius: '4px',
+                                      marginLeft: '4px',
+                                      backgroundColor: '#cce5ff',
+                                      color: '#004085'
+                                    }}>
+                                      covenant
+                                    </span>
+                                  )}
+                                  {isAuthhead && (
+                                    <span style={{
+                                      display: 'inline-block',
+                                      padding: '1px 6px',
+                                      fontSize: '0.85em',
+                                      borderRadius: '4px',
+                                      marginLeft: '4px',
+                                      backgroundColor: '#e2d9f3',
+                                      color: '#3d2b6b'
+                                    }}>
+                                      authhead
+                                    </span>
+                                  )}
+                                </div>
+                                <div>
+                                  outpoint: {u.txHash.substring(0, 16)}...{u.txHash.substring(u.txHash.length - 8)}:{u.vout}
+                                </div>
+                                <div>reserved FT: {displayTokenAmount(u.fungibleTokenAmount)}</div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </details>
+                    )
+                  })()}
+                  <br />
                 </>
               ) : (
                 <>No reserved supply (full supply circulating)<br /><br /></>
@@ -136,9 +196,12 @@ export function SupplyStats({ tokenInfo, extendedInfo, metadataInfo }: SupplySta
       {extendedInfo && extendedInfo.totalSupplyNFTs > 0 && (
         <>
           total amount NFTs: {extendedInfo.totalSupplyNFTs.toLocaleString("en-GB")}
-          {tokenInfo.mintingNFTs > 0 && (
-            <> (incl. {tokenInfo.mintingNFTs} minting NFT{tokenInfo.mintingNFTs > 1 ? 's' : ''})</>
-          )}
+          {(() => {
+            const mintingCount = tokenInfo.reservedSupplyUtxos.filter(u => u.nftCapability === 'minting').length
+            return mintingCount > 0 && (
+              <> (incl. {mintingCount} minting NFT{mintingCount > 1 ? 's' : ''})</>
+            )
+          })()}
           <br /><br />
           has active minting NFT: {tokenInfo.hasActiveMintingToken ? "yes" : "no"} <br /><br />
         </>
