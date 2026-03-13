@@ -251,6 +251,9 @@ export function AuthchainInfo({ tokenInfo, metadataInfo }: AuthchainInfoProps) {
 
   return (
     <>
+      <hr />
+      <div style={{ marginTop: '10px' }}><strong>Authchain Info</strong></div><br />
+
       genesis transaction: {' '}
       <a href={BLOCK_EXPLORER_URL + tokenInfo.genesisTx} target="_blank" rel="noreferrer" style={{ color: "black" }}>
         {tokenInfo.genesisTx}

@@ -48,6 +48,8 @@ export interface ExtendedTokenInfo {
   totalSupplyNFTs: number
   numberHolders: number
   numberTokenAddresses: number
+  userSupplyFT: number
+  contractSupplyFT: number
 }
 
 export type DiagnosticType =

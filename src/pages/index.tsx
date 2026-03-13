@@ -423,7 +423,7 @@ export default function Home() {
       const totalSupplyFT = calculateTotalSupplyFT(allTokenOutputs)
 
       // Calculate holder stats
-      const { numberHolders, numberTokenAddresses } = countUniqueHolders(allTokenOutputs)
+      const { numberHolders, numberTokenAddresses, userSupplyFT, contractSupplyFT } = countUniqueHolders(allTokenOutputs)
 
       // Set extended token info (supply & holder data)
       setExtendedTokenInfo({
@@ -431,6 +431,8 @@ export default function Home() {
         totalSupplyNFTs,
         numberHolders,
         numberTokenAddresses,
+        userSupplyFT,
+        contractSupplyFT,
       })
     } catch (error) {
       console.log(error)

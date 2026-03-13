@@ -1,4 +1,5 @@
 import type { TokenInfo, ExtendedTokenInfo, MetadataInfo, NftCategory } from '@/interfaces'
+import { lockingBytecodeToCashAddress, hexToBin } from '@bitauth/libauth'
 
 interface SupplyStatsProps {
   tokenInfo: TokenInfo
@@ -170,9 +171,14 @@ export function SupplyStats({ tokenInfo, extendedInfo, metadataInfo }: SupplySta
                                     </span>
                                   )}
                                 </div>
-                                <div>
-                                  outpoint: {u.txHash.substring(0, 16)}...{u.txHash.substring(u.txHash.length - 8)}:{u.vout}
+                                <div style={{ wordBreak: 'break-all' }}>
+                                  outpoint: {u.txHash}:{u.vout}
                                 </div>
+                                {(() => {
+                                  const result = lockingBytecodeToCashAddress({ bytecode: hexToBin(u.lockingBytecode), prefix: 'bitcoincash' })
+                                  const address = typeof result === 'string' ? undefined : result.address
+                                  return address ? <div style={{ wordBreak: 'break-all' }}>address: {address}</div> : null
+                                })()}
                                 <div>reserved FT: {displayTokenAmount(u.fungibleTokenAmount)}</div>
                               </div>
                             )
@@ -214,6 +220,12 @@ export function SupplyStats({ tokenInfo, extendedInfo, metadataInfo }: SupplySta
               number of user-addresses holding {symbol || 'the token'}: {extendedInfo.numberHolders.toLocaleString("en-GB")}<br /><br />
               number of smart contract addresses holding {symbol || 'the token'}: {(extendedInfo.numberTokenAddresses - extendedInfo.numberHolders).toLocaleString("en-GB")}<br /><br />
               total number of addresses holding {symbol || 'the token'}: {extendedInfo.numberTokenAddresses.toLocaleString("en-GB")}<br /><br />
+              {tokenInfo.genesisSupplyFT > 0 && extendedInfo.userSupplyFT > 0 && (
+                <>circulating supply held on user addresses: {displayTokenAmount(extendedInfo.userSupplyFT)}<br /><br /></>
+              )}
+              {tokenInfo.genesisSupplyFT > 0 && extendedInfo.contractSupplyFT > 0 && (
+                <>circulating supply held on smart contracts: {displayTokenAmount(extendedInfo.contractSupplyFT)}<br /><br /></>
+              )}
             </>
           ) : (
             <>loading holder data...<br /><br /></>
