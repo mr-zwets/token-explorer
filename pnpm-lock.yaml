@@ -11,6 +11,9 @@ importers:
       '@bitauth/libauth':
         specifier: ^3.0.0
         version: 3.0.0
+      '@electrum-cash/protocol':
+        specifier: ^2.3.1
+        version: 2.3.1
       '@mainnet-cash/bcmr':
         specifier: 2.7.34
         version: 2.7.34
@@ -82,8 +85,17 @@ packages:
   '@electrum-cash/network@4.1.4':
     resolution: {integrity: sha512-nHC/HTo26JGghVunXMlc2lh2p6gwUDjs8umGvEE4we+G0Hyv7xaO+WVYqKrGcr5huBnUX9wakVBIJmbtigzi4Q==}
 
+  '@electrum-cash/network@4.2.2':
+    resolution: {integrity: sha512-v2Wwt2o0VBBALPArx2dJEDvSqewKjiTW5KAd+jEXxxgdSxFygjJIrFcXryKOCv2CDbpE5+lXAogPAjx6FqW/nw==}
+
+  '@electrum-cash/protocol@2.3.1':
+    resolution: {integrity: sha512-fVahMlWAl4hfbLba8yM5ko/D4Rc0FpyQ20rILzjOyj1R0VymmaJ3SuiiHmvTbe2enZFyjKTV4v2oL+7bs6YNkw==}
+
   '@electrum-cash/web-socket@1.0.0':
     resolution: {integrity: sha512-+VQ6aPE7nUysyDn9SB7/uqKuVJmjrhvr0LRK2ANTeR1DfmXBnv5z29e/0zK5A7ZoAz0gdZZuLDzN46r8S5Cxig==}
+
+  '@electrum-cash/web-socket@1.2.3':
+    resolution: {integrity: sha512-sFWujTt98mvsMvE6gWjG44evkF3PcZhG1JffkkEUAVan+c9X51wkiWr3hkjPeIW0WfNpMTrFkvpGqVYmRj1RCA==}
 
   '@emnapi/core@1.5.0':
     resolution: {integrity: sha512-sbP8GzB1WDzacS8fgNPpHlp6C9VZe+SJP3F90W9rLemaQj2PzIuTEl1qDOYQf58YIpyjViI24y9aPWCjEzY2cg==}
@@ -1737,7 +1749,43 @@ snapshots:
       - supports-color
       - utf-8-validate
 
+  '@electrum-cash/network@4.2.2':
+    dependencies:
+      '@electrum-cash/debug-logs': 1.0.0
+      '@electrum-cash/web-socket': 1.2.3
+      async-mutex: 0.5.0
+      debug: 4.4.3
+      eventemitter3: 5.0.1
+      lossless-json: 4.2.0
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+
+  '@electrum-cash/protocol@2.3.1':
+    dependencies:
+      '@bitauth/libauth': 3.0.0
+      '@electrum-cash/network': 4.2.2
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+
   '@electrum-cash/web-socket@1.0.0':
+    dependencies:
+      '@electrum-cash/debug-logs': 1.0.0
+      '@monsterbitar/isomorphic-ws': 5.3.1(ws@8.18.3)
+      '@types/ws': 8.18.1
+      async-mutex: 0.5.0
+      eventemitter3: 5.0.1
+      lossless-json: 4.2.0
+      ws: 8.18.3
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+
+  '@electrum-cash/web-socket@1.2.3':
     dependencies:
       '@electrum-cash/debug-logs': 1.0.0
       '@monsterbitar/isomorphic-ws': 5.3.1(ws@8.18.3)

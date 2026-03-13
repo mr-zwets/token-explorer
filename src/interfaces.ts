@@ -66,6 +66,18 @@ export interface Diagnostic {
   details?: string
 }
 
+export interface ElectrumVerification {
+  verified: boolean
+  totalChaingraphUtxos: number
+  totalElectrumUtxos: number
+  staleCount: number
+  missingCount: number
+  chaingraphTotalFT: number
+  electrumTotalFT: number
+  electrumReservedFT: number
+  error?: string
+}
+
 export interface MetadataInfo {
   metaDataLocation?:string;
   httpsUrl?:string;

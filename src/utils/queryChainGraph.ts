@@ -44,6 +44,8 @@ export async function queryAllTokenHolders(tokenId:string, offset:number = 0){
           _not: { spent_by: {} }
         }
       ) {
+        transaction_hash
+        output_index
         locking_bytecode
         fungible_token_amount
         nonfungible_token_capability

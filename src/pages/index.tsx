@@ -7,8 +7,9 @@ import { queryGenesisInfo, queryIssuingUtxos, queryAuthchain, queryAllTokenHolde
 import { countUniqueHolders, calculateTotalSupplyFT } from '../utils/calculations'
 import { checkOtrVerified } from '../utils/otrRegistry'
 import { IdentitySnapshotSchema } from '../utils/bcmrSchema'
-import type { TokenInfo, ExtendedTokenInfo, MetadataInfo, TokenMetadata, AuthchainEntry, Diagnostic, ReservedSupplyUtxo } from '@/interfaces'
+import type { TokenInfo, ExtendedTokenInfo, MetadataInfo, TokenMetadata, AuthchainEntry, Diagnostic, ReservedSupplyUtxo, ElectrumVerification } from '@/interfaces'
 import { CHAINGRAPH_URL, IPFS_GATEWAY } from '@/constants'
+import { verifySupplyViaElectrum } from '@/utils/queryElectrum'
 import { TokenSearch, MetadataDisplay, SupplyStats, AuthchainInfo } from '@/components'
 
 export default function Home() {
@@ -20,6 +21,7 @@ export default function Home() {
   const [extendedTokenInfoError, setExtendedTokenInfoError] = useState<string>()
   const [metadataInfo, setMetadataInfo] = useState<MetadataInfo>()
   const [tokenIconUri, setTokenIconUri] = useState<string>("")
+  const [electrumVerification, setElectrumVerification] = useState<ElectrumVerification>()
 
   useEffect(() => {
     const url = new URL(window.location.href)
@@ -58,6 +60,7 @@ export default function Home() {
     setExtendedTokenInfoError(undefined)
     setMetadataInfo(undefined)
     setTokenIconUri("")
+    setElectrumVerification(undefined)
     setIsLoadingTokenInfo(true)
     const metadataReadyPromise = new Promise<void>(resolve => {
       metadataReadyRef.current = { resolve }
@@ -239,6 +242,7 @@ export default function Home() {
   async function lookUpTokenData(tokenId: string, metadataReady: Promise<void>) {
     // Start holder query early so it runs in parallel, but await it in Phase 2
     const holderDataPromise = queryAllTokenHolders(tokenId)
+    let network: 'mainnet' | 'chipnet' = 'mainnet'
 
     try {
       // Start all queries in parallel, but don't block on the slow holder query
@@ -270,7 +274,7 @@ export default function Home() {
       const blockTimestamp = genesisTransaction?.block_inclusions?.[0]?.block?.timestamp
       const genesisTxTimestamp = blockTimestamp ? Number(blockTimestamp) : undefined
       const nodeName = respJsonAuthchain.transaction[0]?.block_inclusions?.[0]?.block?.accepted_by?.[0]?.node?.name
-      const network = nodeName?.includes('chipnet') ? 'chipnet' : 'mainnet'
+      network = nodeName?.includes('chipnet') ? 'chipnet' : 'mainnet'
 
       let genesisSupplyFT = 0
       let hasGenesisNFTs = false
@@ -476,6 +480,25 @@ export default function Home() {
         userSupplyFT,
         contractSupplyFT,
       })
+
+      // Phase 3: Verify supply via Electrum (background, non-blocking)
+      verifySupplyViaElectrum(allTokenOutputs, tokenId, network).then(
+        result => setElectrumVerification(result),
+        error => {
+          console.error("Electrum verification failed:", error)
+          setElectrumVerification({
+            verified: false,
+            totalChaingraphUtxos: allTokenOutputs.length,
+            totalElectrumUtxos: 0,
+            staleCount: 0,
+            missingCount: 0,
+            chaingraphTotalFT: 0,
+            electrumTotalFT: 0,
+            electrumReservedFT: 0,
+            error: error instanceof Error ? error.message : String(error),
+          })
+        }
+      )
     } catch (error) {
       console.error("Error in queryAllTokenHolders:", error)
       setExtendedTokenInfoError("Failed to load holder & supply data")
@@ -567,6 +590,7 @@ export default function Home() {
                   extendedInfo={extendedTokenInfo}
                   extendedInfoError={extendedTokenInfoError}
                   metadataInfo={metadataInfo}
+                  electrumVerification={electrumVerification}
                 />
                 <AuthchainInfo
                   tokenInfo={tokenInfo}

@@ -1,4 +1,4 @@
-import type { TokenInfo, ExtendedTokenInfo, MetadataInfo, NftCategory } from '@/interfaces'
+import type { TokenInfo, ExtendedTokenInfo, MetadataInfo, NftCategory, ElectrumVerification } from '@/interfaces'
 import { lockingBytecodeToCashAddress, hexToBin } from '@bitauth/libauth'
 
 interface SupplyStatsProps {
@@ -6,6 +6,7 @@ interface SupplyStatsProps {
   extendedInfo: ExtendedTokenInfo | undefined
   extendedInfoError: string | undefined
   metadataInfo: MetadataInfo | undefined
+  electrumVerification?: ElectrumVerification
 }
 
 function NftParseDetails({ nfts }: { nfts: NftCategory }) {
@@ -61,7 +62,40 @@ function NftParseDetails({ nfts }: { nfts: NftCategory }) {
   )
 }
 
-export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metadataInfo }: SupplyStatsProps) {
+function ElectrumVerificationBadge({ verification }: { verification: ElectrumVerification }) {
+  if (verification.error) {
+    return (
+      <div style={{ padding: '8px 12px', backgroundColor: '#f5f5f5', border: '1px solid #ccc', borderRadius: '6px', fontSize: '0.9em', color: '#666' }}>
+        Electrum verification unavailable: {verification.error}
+      </div>
+    )
+  }
+
+  if (verification.verified) {
+    return (
+      <div style={{ padding: '8px 12px', backgroundColor: '#d4edda', border: '1px solid #28a745', borderRadius: '6px', fontSize: '0.9em', color: '#155724' }}>
+        chaingraph data verified with Electrum ({verification.totalElectrumUtxos.toLocaleString("en-GB")} UTXOs match)
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ padding: '8px 12px', backgroundColor: '#fff3cd', border: '1px solid #ffc107', borderRadius: '6px', fontSize: '0.9em', color: '#856404' }}>
+      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+        Chaingraph data may be stale — Electrum reports different UTXOs
+      </div>
+      <div>Chaingraph UTXOs: {verification.totalChaingraphUtxos.toLocaleString("en-GB")} | Electrum UTXOs: {verification.totalElectrumUtxos.toLocaleString("en-GB")}</div>
+      {verification.staleCount > 0 && (
+        <div>{verification.staleCount.toLocaleString("en-GB")} UTXO{verification.staleCount > 1 ? 's' : ''} in Chaingraph but not in Electrum (likely spent)</div>
+      )}
+      {verification.missingCount > 0 && (
+        <div>{verification.missingCount.toLocaleString("en-GB")} UTXO{verification.missingCount > 1 ? 's' : ''} in Electrum but not in Chaingraph (not yet indexed)</div>
+      )}
+    </div>
+  )
+}
+
+export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metadataInfo, electrumVerification }: SupplyStatsProps) {
   const decimals = metadataInfo?.tokenMetadata?.token?.decimals ?? 0
   const symbol = metadataInfo?.tokenMetadata?.token?.symbol ?? ''
   const nfts = metadataInfo?.tokenMetadata?.token?.nfts
@@ -217,6 +251,14 @@ export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metada
           <br /><br />
           has active minting NFT: {tokenInfo.hasActiveMintingToken ? "yes" : "no"} <br /><br />
         </>
+      )}
+
+      {extendedInfo && (
+        electrumVerification ? (
+          <><ElectrumVerificationBadge verification={electrumVerification} /><br /></>
+        ) : (
+          <>verifying supply via Electrum...<br /><br /></>
+        )
       )}
 
       {metadataInfo?.httpsUrl && (
