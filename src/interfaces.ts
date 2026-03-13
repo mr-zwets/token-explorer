@@ -19,7 +19,8 @@ export interface ReservedSupplyUtxo {
   vout: number
   lockingBytecode: string
   fungibleTokenAmount: number
-  nftCapability: 'minting' | 'mutable'
+  nftCapability: 'minting' | 'mutable' | null
+  isAuthhead?: boolean
 }
 
 export interface TokenInfo {

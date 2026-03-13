@@ -283,7 +283,7 @@ export default function Home() {
         fungibleTokenAmount: parseInt(o.fungible_token_amount ?? "0"),
         nftCapability: o.nonfungible_token_capability as 'minting' | 'mutable'
       }))
-      const hasActiveMintingToken = reservedSupplyUtxos.some(u => u.nftCapability === "minting")
+      const hasActiveMintingToken = reservedSupplyUtxos.some(utxo => utxo.nftCapability === "minting")
       const covenantReservedFT = reservedSupplyUtxos.reduce(
         (total, u) => total + u.fungibleTokenAmount, 0
       )
@@ -370,7 +370,27 @@ export default function Home() {
         new Promise(resolve => setTimeout(resolve, 200))
       ])
 
-      const reservedSupplyFT = covenantReservedFT + authheadReservedFT
+      // Add authhead identity output to reserved supply UTXOs if it holds FT
+      const authHeadVout = Number(identityOutput?.output_index ?? 0)
+      const authHeadAlreadyIncluded = reservedSupplyUtxos.some(
+        u => u.txHash === authHead && u.vout === authHeadVout
+      )
+      if (authHeadAlreadyIncluded) {
+        // Mark the existing entry as authhead
+        const existing = reservedSupplyUtxos.find(utxo => utxo.txHash === authHead && utxo.vout === authHeadVout)
+        if (existing) existing.isAuthhead = true
+      } else if (authheadReservedFT > 0 && authHeadLockingBytecode) {
+        reservedSupplyUtxos.push({
+          txHash: authHead,
+          vout: authHeadVout,
+          lockingBytecode: authHeadLockingBytecode.slice(2),
+          fungibleTokenAmount: authheadReservedFT,
+          nftCapability: identityOutput?.nonfungible_token_capability as 'minting' | 'mutable' | null ?? null,
+          isAuthhead: true
+        })
+      }
+
+      const reservedSupplyFT = covenantReservedFT + (authHeadAlreadyIncluded ? 0 : authheadReservedFT)
 
       setTokenInfo({
         validTxId,

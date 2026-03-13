@@ -118,39 +118,42 @@ export function SupplyStats({ tokenInfo, extendedInfo, metadataInfo }: SupplySta
                   reserved supply: {displayTokenAmount(tokenInfo.reservedSupplyFT)}
                   {` (${toPercentage(tokenInfo.reservedSupplyFT / extendedInfo.totalSupplyFT)}%)`}<br /><br />
                   {(() => {
-                    const covenantUtxos = tokenInfo.reservedSupplyUtxos.filter(u => !u.lockingBytecode.startsWith('76a914'))
-                    const p2pkhUtxos = tokenInfo.reservedSupplyUtxos.filter(u => u.lockingBytecode.startsWith('76a914'))
+                    const covenantUtxos = tokenInfo.reservedSupplyUtxos.filter(utxo => !utxo.isAuthhead && !utxo.lockingBytecode.startsWith('76a914'))
+                    const p2pkhUtxos = tokenInfo.reservedSupplyUtxos.filter(utxo => !utxo.isAuthhead && utxo.lockingBytecode.startsWith('76a914'))
+                    const authheadUtxo = tokenInfo.reservedSupplyUtxos.find(utxo => utxo.isAuthhead)
                     const summaryParts: string[] = []
                     if (covenantUtxos.length > 0) summaryParts.push(`${covenantUtxos.length} issuing covenant UTXO${covenantUtxos.length > 1 ? 's' : ''}`)
                     if (p2pkhUtxos.length > 0) summaryParts.push(`${p2pkhUtxos.length} P2PKH UTXO${p2pkhUtxos.length > 1 ? 's' : ''}`)
-                    if (summaryParts.length === 0) return <>reserved supply held on identity output<br /><br /></>
+                    if (authheadUtxo) summaryParts.push('identity output')
                     return (
                       <details>
                         <summary style={{ cursor: 'pointer' }}>reserved supply held on {summaryParts.join(' and ')}</summary>
                         <div style={{ marginTop: '8px', marginLeft: '8px' }}>
-                          {tokenInfo.reservedSupplyUtxos.map(u => {
-                            const isAuthhead = u.txHash === tokenInfo.authHead
-                            const isCovenant = !u.lockingBytecode.startsWith('76a914')
+                          {tokenInfo.reservedSupplyUtxos.map(utxo => {
+                            const isAuthhead = !!utxo.isAuthhead
+                            const isCovenant = !utxo.lockingBytecode.startsWith('76a914')
                             return (
-                              <div key={`${u.txHash}:${u.vout}`} style={{ marginBottom: '14px', paddingLeft: '8px', borderLeft: '2px solid #ccc', lineHeight: '1.6' }}>
+                              <div key={`${utxo.txHash}:${utxo.vout}`} style={{ marginBottom: '14px', paddingLeft: '8px', borderLeft: '2px solid #ccc', lineHeight: '1.6' }}>
                                 <div>
-                                  <span style={{
-                                    display: 'inline-block',
-                                    padding: '1px 6px',
-                                    fontSize: '0.85em',
-                                    borderRadius: '4px',
-                                    backgroundColor: u.nftCapability === 'minting' ? '#d4edda' : '#fff3cd',
-                                    color: u.nftCapability === 'minting' ? '#155724' : '#856404'
-                                  }}>
-                                    {u.nftCapability}
-                                  </span>
+                                  {utxo.nftCapability && (
+                                    <span style={{
+                                      display: 'inline-block',
+                                      padding: '1px 6px',
+                                      fontSize: '0.85em',
+                                      borderRadius: '4px',
+                                      backgroundColor: utxo.nftCapability === 'minting' ? '#d4edda' : '#fff3cd',
+                                      color: utxo.nftCapability === 'minting' ? '#155724' : '#856404'
+                                    }}>
+                                      {utxo.nftCapability}
+                                    </span>
+                                  )}
                                   {isCovenant && (
                                     <span style={{
                                       display: 'inline-block',
                                       padding: '1px 6px',
                                       fontSize: '0.85em',
                                       borderRadius: '4px',
-                                      marginLeft: '4px',
+                                      marginLeft: utxo.nftCapability ? '4px' : undefined,
                                       backgroundColor: '#cce5ff',
                                       color: '#004085'
                                     }}>
@@ -163,7 +166,7 @@ export function SupplyStats({ tokenInfo, extendedInfo, metadataInfo }: SupplySta
                                       padding: '1px 6px',
                                       fontSize: '0.85em',
                                       borderRadius: '4px',
-                                      marginLeft: '4px',
+                                      marginLeft: utxo.nftCapability || isCovenant ? '4px' : undefined,
                                       backgroundColor: '#e2d9f3',
                                       color: '#3d2b6b'
                                     }}>
@@ -172,14 +175,14 @@ export function SupplyStats({ tokenInfo, extendedInfo, metadataInfo }: SupplySta
                                   )}
                                 </div>
                                 <div style={{ wordBreak: 'break-all' }}>
-                                  outpoint: {u.txHash}:{u.vout}
+                                  outpoint: {utxo.txHash}:{utxo.vout}
                                 </div>
                                 {(() => {
-                                  const result = lockingBytecodeToCashAddress({ bytecode: hexToBin(u.lockingBytecode), prefix: 'bitcoincash' })
+                                  const result = lockingBytecodeToCashAddress({ bytecode: hexToBin(utxo.lockingBytecode), prefix: 'bitcoincash' })
                                   const address = typeof result === 'string' ? undefined : result.address
                                   return address ? <div style={{ wordBreak: 'break-all' }}>address: {address}</div> : null
                                 })()}
-                                <div>reserved FT: {displayTokenAmount(u.fungibleTokenAmount)}</div>
+                                <div>reserved FT: {displayTokenAmount(utxo.fungibleTokenAmount)}</div>
                               </div>
                             )
                           })}
@@ -203,7 +206,7 @@ export function SupplyStats({ tokenInfo, extendedInfo, metadataInfo }: SupplySta
         <>
           total amount NFTs: {extendedInfo.totalSupplyNFTs.toLocaleString("en-GB")}
           {(() => {
-            const mintingCount = tokenInfo.reservedSupplyUtxos.filter(u => u.nftCapability === 'minting').length
+            const mintingCount = tokenInfo.reservedSupplyUtxos.filter(utxo => utxo.nftCapability === 'minting').length
             return mintingCount > 0 && (
               <> (incl. {mintingCount} minting NFT{mintingCount > 1 ? 's' : ''})</>
             )

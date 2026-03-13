@@ -125,8 +125,10 @@ export async function queryAuthchain(tokenId:string){
         authhead {
           hash,
           identity_output {
+            output_index
             fungible_token_amount
             locking_bytecode
+            nonfungible_token_capability
           }
           block_inclusions {
             block {
