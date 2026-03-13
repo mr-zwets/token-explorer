@@ -16,6 +16,8 @@ export default function Home() {
   const [isLoadingTokenInfo, setIsLoadingTokenInfo] = useState<boolean>(false)
   const [tokenInfo, setTokenInfo] = useState<TokenInfo>()
   const [extendedTokenInfo, setExtendedTokenInfo] = useState<ExtendedTokenInfo>()
+  const [tokenInfoError, setTokenInfoError] = useState<string>()
+  const [extendedTokenInfoError, setExtendedTokenInfoError] = useState<string>()
   const [metadataInfo, setMetadataInfo] = useState<MetadataInfo>()
   const [tokenIconUri, setTokenIconUri] = useState<string>("")
 
@@ -51,7 +53,9 @@ export default function Home() {
   function searchToken(id: string) {
     setTokenId(id)
     setTokenInfo(undefined)
+    setTokenInfoError(undefined)
     setExtendedTokenInfo(undefined)
+    setExtendedTokenInfoError(undefined)
     setMetadataInfo(undefined)
     setTokenIconUri("")
     setIsLoadingTokenInfo(true)
@@ -233,10 +237,12 @@ export default function Home() {
   }
 
   async function lookUpTokenData(tokenId: string, metadataReady: Promise<void>) {
+    // Start holder query early so it runs in parallel, but await it in Phase 2
+    const holderDataPromise = queryAllTokenHolders(tokenId)
+
     try {
       // Start all queries in parallel, but don't block on the slow holder query
       console.time('initialDataLoad')
-      const holderDataPromise = queryAllTokenHolders(tokenId)
 
       const [
         respJsonGenesisSupply,
@@ -249,7 +255,10 @@ export default function Home() {
       ])
 
       if (!respJsonGenesisSupply || !respJsonIssuingUtxos || !respJsonAuthchain) {
-        throw new Error("Error in Chaingraph fetches")
+        console.error("Error in Chaingraph fetches: one or more queries returned null")
+        setTokenInfoError("Failed to load token data from Chaingraph")
+        setIsLoadingTokenInfo(false)
+        return
       }
 
       // Check if the transaction exists on-chain (authchain query finds it by hash)
@@ -412,12 +421,22 @@ export default function Home() {
         network,
         authchainMigrations: filteredMigrations
       })
+    } catch (error) {
+      console.error("Error in initial data load:", error)
+      setTokenInfoError("Failed to load token data from Chaingraph")
+      setIsLoadingTokenInfo(false)
+      return
+    }
 
-      // Phase 2: await holder data (already started in parallel)
+    // Phase 2: await holder data (already started in parallel)
+    try {
       console.time('queryAllTokenHolders')
       const respJsonAllTokenHolders = await holderDataPromise
       console.timeEnd('queryAllTokenHolders')
-      if (!respJsonAllTokenHolders) throw new Error("Error in queryAllTokenHolders")
+      if (!respJsonAllTokenHolders) {
+        setExtendedTokenInfoError("Failed to load holder & supply data")
+        return
+      }
 
       // Paginate queryAllTokenHolders (returns max 5000 per page)
       let allTokenOutputs = respJsonAllTokenHolders.output
@@ -429,7 +448,10 @@ export default function Home() {
         console.time(`queryAllTokenHolders page ${indexOffset + 1}`)
         const nextPage = await queryAllTokenHolders(tokenId, 5000 * indexOffset)
         console.timeEnd(`queryAllTokenHolders page ${indexOffset + 1}`)
-        if (!nextPage) throw new Error("Error in queryAllTokenHolders pagination")
+        if (!nextPage) {
+          setExtendedTokenInfoError("Failed to load holder & supply data (pagination error)")
+          return
+        }
         allTokenOutputs = allTokenOutputs.concat(nextPage.output)
         lastBatchSize = nextPage.output.length
       }
@@ -455,10 +477,8 @@ export default function Home() {
         contractSupplyFT,
       })
     } catch (error) {
-      console.log(error)
-      alert("The input is not a valid tokenId!")
-      setTokenInfo(undefined)
-      setIsLoadingTokenInfo(false)
+      console.error("Error in queryAllTokenHolders:", error)
+      setExtendedTokenInfoError("Failed to load holder & supply data")
     }
   }
 
@@ -480,6 +500,16 @@ export default function Home() {
             onTokenIdChange={setTokenId}
             onSearch={() => searchToken(tokenId)}
           />
+
+          {tokenInfoError && (
+            <div style={{ marginTop: "20px", overflowWrap: "anywhere", maxWidth: "570px" }}>
+              <div className={styles.description}>
+                <div style={{ padding: "12px 16px", backgroundColor: "#fdecea", border: "1px solid #d9534f", borderRadius: "6px", color: "#1a1a1a" }}>
+                  {tokenInfoError}
+                </div>
+              </div>
+            </div>
+          )}
 
           {tokenInfo && !tokenInfo.validTxId && (
             <div style={{ marginTop: "20px", overflowWrap: "anywhere", maxWidth: "570px" }}>
@@ -535,6 +565,7 @@ export default function Home() {
                 <SupplyStats
                   tokenInfo={tokenInfo}
                   extendedInfo={extendedTokenInfo}
+                  extendedInfoError={extendedTokenInfoError}
                   metadataInfo={metadataInfo}
                 />
                 <AuthchainInfo

@@ -4,6 +4,7 @@ import { lockingBytecodeToCashAddress, hexToBin } from '@bitauth/libauth'
 interface SupplyStatsProps {
   tokenInfo: TokenInfo
   extendedInfo: ExtendedTokenInfo | undefined
+  extendedInfoError: string | undefined
   metadataInfo: MetadataInfo | undefined
 }
 
@@ -60,7 +61,7 @@ function NftParseDetails({ nfts }: { nfts: NftCategory }) {
   )
 }
 
-export function SupplyStats({ tokenInfo, extendedInfo, metadataInfo }: SupplyStatsProps) {
+export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metadataInfo }: SupplyStatsProps) {
   const decimals = metadataInfo?.tokenMetadata?.token?.decimals ?? 0
   const symbol = metadataInfo?.tokenMetadata?.token?.symbol ?? ''
   const nfts = metadataInfo?.tokenMetadata?.token?.nfts
@@ -196,6 +197,8 @@ export function SupplyStats({ tokenInfo, extendedInfo, metadataInfo }: SupplySta
                 <>No reserved supply (full supply circulating)<br /><br /></>
               )}
             </>
+          ) : extendedInfoError ? (
+            <><span style={{ color: '#b33' }}>{extendedInfoError}</span><br /><br /></>
           ) : (
             <>loading supply data...<br /><br /></>
           )}
@@ -230,6 +233,8 @@ export function SupplyStats({ tokenInfo, extendedInfo, metadataInfo }: SupplySta
                 <>circulating supply held on smart contracts: {displayTokenAmount(extendedInfo.contractSupplyFT)}<br /><br /></>
               )}
             </>
+          ) : extendedInfoError ? (
+            <><span style={{ color: '#b33' }}>{extendedInfoError}</span><br /><br /></>
           ) : (
             <>loading holder data...<br /><br /></>
           )}
