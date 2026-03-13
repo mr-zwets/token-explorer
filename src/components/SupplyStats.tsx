@@ -78,9 +78,9 @@ export function SupplyStats({ tokenInfo, extendedInfo, metadataInfo }: SupplySta
   }
 
   const getTokenType = () => {
-    if (tokenInfo.genesisSupplyFT && !extendedInfo?.totalSupplyNFTs) return " Fungible Token"
-    if (!tokenInfo.genesisSupplyFT && extendedInfo?.totalSupplyNFTs) return " NFTs"
-    if (tokenInfo.genesisSupplyFT && extendedInfo?.totalSupplyNFTs) return " Both Fungible & Non-Fungible tokens"
+    if (tokenInfo.genesisSupplyFT && !tokenInfo.hasGenesisNFTs) return " Fungible Token"
+    if (!tokenInfo.genesisSupplyFT && tokenInfo.hasGenesisNFTs) return " NFTs"
+    if (tokenInfo.genesisSupplyFT && tokenInfo.hasGenesisNFTs) return " Both Fungible & Non-Fungible tokens"
     return ""
   }
 
@@ -110,14 +110,14 @@ export function SupplyStats({ tokenInfo, extendedInfo, metadataInfo }: SupplySta
                 </>
               )}
 
-              {extendedInfo.reservedSupplyFT ? (
+              {tokenInfo.reservedSupplyFT ? (
                 <>
-                  circulating supply: {displayTokenAmount(extendedInfo.totalSupplyFT - extendedInfo.reservedSupplyFT)}
-                  {` (${toPercentage((extendedInfo.totalSupplyFT - extendedInfo.reservedSupplyFT) / extendedInfo.totalSupplyFT)}%)`}<br /><br />
-                  reserved supply: {displayTokenAmount(extendedInfo.reservedSupplyFT)}
-                  {` (${toPercentage(extendedInfo.reservedSupplyFT / extendedInfo.totalSupplyFT)}%)`}<br /><br />
-                  {extendedInfo.issuingCovenantUtxos > 0 ? (
-                    <>reserved supply held on {extendedInfo.issuingCovenantUtxos} issuing covenant UTXO{extendedInfo.issuingCovenantUtxos > 1 ? 's' : ''}</>
+                  circulating supply: {displayTokenAmount(extendedInfo.totalSupplyFT - tokenInfo.reservedSupplyFT)}
+                  {` (${toPercentage((extendedInfo.totalSupplyFT - tokenInfo.reservedSupplyFT) / extendedInfo.totalSupplyFT)}%)`}<br /><br />
+                  reserved supply: {displayTokenAmount(tokenInfo.reservedSupplyFT)}
+                  {` (${toPercentage(tokenInfo.reservedSupplyFT / extendedInfo.totalSupplyFT)}%)`}<br /><br />
+                  {tokenInfo.issuingCovenantUtxos > 0 ? (
+                    <>reserved supply held on {tokenInfo.issuingCovenantUtxos} issuing covenant UTXO{tokenInfo.issuingCovenantUtxos > 1 ? 's' : ''}</>
                   ) : (
                     <>reserved supply held on identity output</>
                   )}
@@ -136,8 +136,8 @@ export function SupplyStats({ tokenInfo, extendedInfo, metadataInfo }: SupplySta
       {extendedInfo && extendedInfo.totalSupplyNFTs > 0 && (
         <>
           total amount NFTs: {extendedInfo.totalSupplyNFTs.toLocaleString("en-GB")}
-          {extendedInfo.mintingNFTs > 0 && (
-            <> (incl. {extendedInfo.mintingNFTs} minting NFT{extendedInfo.mintingNFTs > 1 ? 's' : ''})</>
+          {tokenInfo.mintingNFTs > 0 && (
+            <> (incl. {tokenInfo.mintingNFTs} minting NFT{tokenInfo.mintingNFTs > 1 ? 's' : ''})</>
           )}
           <br /><br />
           has active minting NFT: {tokenInfo.hasActiveMintingToken ? "yes" : "no"} <br /><br />

@@ -3,8 +3,8 @@ import styles from '@/styles/Home.module.css'
 import { BCMR } from '@mainnet-cash/bcmr'
 import { utf8ToBin, sha256, binToHex, hexToBin, lockingBytecodeToCashAddress } from '@bitauth/libauth'
 import React, { useEffect, useRef, useState } from 'react'
-import { queryGenesisSupplyFT, queryActiveMinting, queryAuthchain, queryAllTokenHolders, queryGenesisCategories } from '../utils/queryChainGraph'
-import { countUniqueHolders, calculateTotalSupplyFT, calculateReservedSupplyFT } from '../utils/calculations'
+import { queryGenesisInfo, queryIssuingUtxos, queryAuthchain, queryAllTokenHolders, queryGenesisCategories } from '../utils/queryChainGraph'
+import { countUniqueHolders, calculateTotalSupplyFT } from '../utils/calculations'
 import { checkOtrVerified } from '../utils/otrRegistry'
 import { IdentitySnapshotSchema } from '../utils/bcmrSchema'
 import type { TokenInfo, ExtendedTokenInfo, MetadataInfo, TokenMetadata, AuthchainEntry, Diagnostic } from '@/interfaces'
@@ -40,7 +40,7 @@ export default function Home() {
   }, [metadataInfo])
 
   useEffect(() => {
-    if (tokenInfo && (tokenInfo.validTokenCategory !== undefined || !tokenInfo.validTxId)) {
+    if (tokenInfo) {
       setIsLoadingTokenInfo(false)
     }
   }, [tokenInfo])
@@ -240,15 +240,15 @@ export default function Home() {
 
       const [
         respJsonGenesisSupply,
-        respJsonActiveMinting,
+        respJsonIssuingUtxos,
         respJsonAuthchain
       ] = await Promise.all([
-        queryGenesisSupplyFT(tokenId),
-        queryActiveMinting(tokenId),
+        queryGenesisInfo(tokenId),
+        queryIssuingUtxos(tokenId),
         queryAuthchain(tokenId)
       ])
 
-      if (!respJsonGenesisSupply || !respJsonActiveMinting || !respJsonAuthchain) {
+      if (!respJsonGenesisSupply || !respJsonIssuingUtxos || !respJsonAuthchain) {
         throw new Error("Error in Chaingraph fetches")
       }
 
@@ -264,15 +264,29 @@ export default function Home() {
       const network = nodeName?.includes('chipnet') ? 'chipnet' : 'mainnet'
 
       let genesisSupplyFT = 0
+      let hasGenesisNFTs = false
       if (genesisTransaction?.outputs) {
         genesisSupplyFT = genesisTransaction.outputs.reduce(
           (total: number, output) => total + parseInt(output?.fungible_token_amount ?? '0'),
           0
         )
+        hasGenesisNFTs = genesisTransaction.outputs.some(
+          output => output.nonfungible_token_capability != null
+        )
       }
 
-      // Parse hasActiveMintingToken
-      const hasActiveMintingToken = Boolean(respJsonActiveMinting.output.length)
+      // Parse issuing covenant data (minting + mutable NFT UTXOs)
+      const issuingOutputs = respJsonIssuingUtxos.output
+      const hasActiveMintingToken = issuingOutputs.some(
+        o => o.nonfungible_token_capability === "minting"
+      )
+      const mintingNFTs = issuingOutputs.filter(
+        o => o.nonfungible_token_capability === "minting"
+      ).length
+      const issuingCovenantUtxos = issuingOutputs.length
+      const covenantReservedFT = issuingOutputs.reduce(
+        (total, o) => total + parseInt(o.fungible_token_amount ?? "0"), 0
+      )
 
       // Parse authchain data with intermediate variables
       const authchainData = respJsonAuthchain.transaction[0]?.authchains?.[0]
@@ -326,9 +340,29 @@ export default function Home() {
       const filteredMigrations = genesisIndex >= 0 ? authchainMigrations.slice(genesisIndex) : authchainMigrations
 
       // Phase 1: set initial tokenInfo from fast queries
-      // For FT tokens (genesisSupplyFT > 0), we know it's valid immediately
       console.timeEnd('initialDataLoad')
-      const initialValidTokenCategory = genesisSupplyFT > 0 ? true : undefined
+      const validTokenCategory = genesisSupplyFT > 0 || hasGenesisNFTs
+
+      // If not a valid token category, check if this tx is a genesis tx for other categories
+      let tokenCategoriesInTx: string[] | undefined
+      if (!validTokenCategory && validTxId) {
+        const respTokenOutputs = await queryGenesisCategories(tokenId)
+        if (respTokenOutputs?.transaction?.[0]) {
+          const tx = respTokenOutputs.transaction[0]
+          const input0Hash = tx.inputs?.[0]?.outpoint_transaction_hash
+          if (input0Hash) {
+            const genesisCategories = new Set<string>()
+            for (const output of tx.outputs ?? []) {
+              if (output.token_category === input0Hash) {
+                genesisCategories.add(output.token_category.slice(2))
+              }
+            }
+            if (genesisCategories.size > 0) {
+              tokenCategoriesInTx = [...genesisCategories]
+            }
+          }
+        }
+      }
 
       // Wait up to 200ms for metadata to arrive, to avoid a flash of content without metadata
       await Promise.race([
@@ -336,11 +370,18 @@ export default function Home() {
         new Promise(resolve => setTimeout(resolve, 200))
       ])
 
+      const reservedSupplyFT = covenantReservedFT + authheadReservedFT
+
       setTokenInfo({
         validTxId,
-        validTokenCategory: initialValidTokenCategory,
+        validTokenCategory,
+        tokenCategoriesInTx,
+        hasGenesisNFTs,
         genesisSupplyFT,
         hasActiveMintingToken,
+        mintingNFTs,
+        issuingCovenantUtxos,
+        reservedSupplyFT,
         genesisTx,
         genesisTxTimestamp,
         authchainLength,
@@ -374,64 +415,23 @@ export default function Home() {
         lastBatchSize = nextPage.output.length
       }
 
-      // Calculate totalSupplyNFTs and count minting NFTs
+      // Calculate totalSupplyNFTs
       const totalSupplyNFTs = allTokenOutputs.filter(
         (o: { nonfungible_token_capability: string | null }) => o.nonfungible_token_capability !== null
-      ).length
-      const mintingNFTs = allTokenOutputs.filter(
-        (o: { nonfungible_token_capability: string | null }) => o.nonfungible_token_capability === 'minting'
       ).length
 
       // Calculate supply stats
       const totalSupplyFT = calculateTotalSupplyFT(allTokenOutputs)
-      const reservedSupplyFT = calculateReservedSupplyFT(allTokenOutputs, authheadReservedFT)
-      const circulatingSupplyFT = totalSupplyFT - reservedSupplyFT
 
       // Calculate holder stats
-      const { numberHolders, numberTokenAddresses, issuingCovenantUtxos } = countUniqueHolders(allTokenOutputs)
-
-      // A valid token category must have tokens created with it
-      const validTokenCategory = genesisSupplyFT > 0 || totalSupplyNFTs > 0
-
-      // If not a valid token category, check if this tx is a genesis tx for other categories
-      let tokenCategoriesInTx: string[] | undefined
-      if (!validTokenCategory && validTxId) {
-        const respTokenOutputs = await queryGenesisCategories(tokenId)
-        if (respTokenOutputs?.transaction?.[0]) {
-          const tx = respTokenOutputs.transaction[0]
-          const input0Hash = tx.inputs?.[0]?.outpoint_transaction_hash
-          if (input0Hash) {
-            // Find categories that match input 0's outpoint hash (= genesis categories)
-            const genesisCategories = new Set<string>()
-            for (const output of tx.outputs ?? []) {
-              if (output.token_category === input0Hash) {
-                genesisCategories.add(output.token_category.slice(2))
-              }
-            }
-            if (genesisCategories.size > 0) {
-              tokenCategoriesInTx = [...genesisCategories]
-            }
-          }
-        }
-      }
-
-      // Update validTokenCategory on tokenInfo
-      setTokenInfo(prev => prev ? {
-        ...prev,
-        validTokenCategory,
-        tokenCategoriesInTx,
-      } : prev)
+      const { numberHolders, numberTokenAddresses } = countUniqueHolders(allTokenOutputs)
 
       // Set extended token info (supply & holder data)
       setExtendedTokenInfo({
         totalSupplyFT,
         totalSupplyNFTs,
-        mintingNFTs,
-        circulatingSupplyFT,
-        reservedSupplyFT,
         numberHolders,
         numberTokenAddresses,
-        issuingCovenantUtxos,
       })
     } catch (error) {
       console.log(error)

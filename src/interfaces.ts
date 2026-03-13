@@ -16,8 +16,12 @@ export interface AuthchainEntry {
 
 export interface TokenInfo {
   genesisSupplyFT: number
+  hasGenesisNFTs: boolean
   genesisTxTimestamp: number | undefined
   hasActiveMintingToken: boolean
+  mintingNFTs: number
+  issuingCovenantUtxos: number
+  reservedSupplyFT: number
   genesisTx: string
   authchainLength?: number
   authHead?: string
@@ -28,19 +32,15 @@ export interface TokenInfo {
   network: 'mainnet' | 'chipnet'
   authchainMigrations?: AuthchainEntry[]
   validTxId: boolean
-  validTokenCategory?: boolean
+  validTokenCategory: boolean
   tokenCategoriesInTx?: string[]
 }
 
 export interface ExtendedTokenInfo {
   totalSupplyFT: number
-  circulatingSupplyFT: number
-  reservedSupplyFT: number
   totalSupplyNFTs: number
-  mintingNFTs: number
   numberHolders: number
   numberTokenAddresses: number
-  issuingCovenantUtxos: number
 }
 
 export type DiagnosticType =

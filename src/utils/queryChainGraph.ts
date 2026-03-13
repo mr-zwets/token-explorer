@@ -3,7 +3,7 @@ import { CHAINGRAPH_URL } from "@/constants";
 
 const chaingraphClient = new ChaingraphClient(CHAINGRAPH_URL);
 
-export async function queryGenesisSupplyFT(tokenId:string){
+export async function queryGenesisInfo(tokenId:string){
   const queryReqGenesisSupply = graphql(`query GenesisSupplyFT (
     $tokenId: bytea
   ) {
@@ -18,6 +18,7 @@ export async function queryGenesisSupplyFT(tokenId:string){
         hash
         outputs(where: { token_category: { _eq: $tokenId } }) {
           fungible_token_amount
+          nonfungible_token_capability
         }
         block_inclusions {
           block {
@@ -37,6 +38,7 @@ export async function queryAllTokenHolders(tokenId:string, offset:number = 0){
   ) {
       output(
         offset: $offset
+        limit: 5000
         where: {
           token_category: { _eq: $tokenId }
           _not: { spent_by: {} }
@@ -51,22 +53,24 @@ export async function queryAllTokenHolders(tokenId:string, offset:number = 0){
   return (await chaingraphClient.query(queryReqTotalSupply, variables)).data
 }
 
-export async function queryActiveMinting(tokenId:string){
-  const queryReqActiveMinting = graphql(`query ActiveMinting (
+export async function queryIssuingUtxos(tokenId:string){
+  const queryReqIssuingUtxos = graphql(`query IssuingUtxos (
     $tokenId: bytea
   ) {
       output(
         where: {
           token_category: { _eq: $tokenId }
-          _and: { nonfungible_token_capability: { _eq: "minting" } }
+          nonfungible_token_capability: { _in: ["minting", "mutable"] }
           _not: { spent_by: {} }
         }
       ) {
         locking_bytecode
+        fungible_token_amount
+        nonfungible_token_capability
       }
     }`);
   const variables = { tokenId: `\\x${tokenId}` }
-  return (await chaingraphClient.query(queryReqActiveMinting, variables)).data
+  return (await chaingraphClient.query(queryReqIssuingUtxos, variables)).data
 }
 
 
