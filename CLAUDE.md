@@ -23,7 +23,7 @@ BCMR is the metadata standard for CashTokens on BCH. It uses "authchains" (zerot
 
 1. User enters a tokenId (transaction hash) in the input field
 2. Two parallel data fetches occur:
-   - `lookUpTokenData()` - Queries Chaingraph for on-chain token info (genesis supply, NFT counts, holders, authchain)
+   - `lookUpTokenData()` - Queries Chaingraph for on-chain token info (genesis supply, NFT counts, holders, authchain). Runs in three phases: Phase 1 (fast queries: genesis, issuing UTXOs, authchain), Phase 2 (slow paginated holder query), Phase 3 (Electrum verification, non-blocking)
    - `fetchMetadata()` - Uses mainnet-js BCMR library to resolve and validate on-chain linked metadata
 
 ### External Dependencies
@@ -34,6 +34,7 @@ BCMR is the metadata standard for CashTokens on BCH. It uses "authchains" (zerot
   - `BCMR.getTokenInfo()` - Retrieves token metadata after importing
 - **@bitauth/libauth** - Cryptographic primitives, transaction encoding (https://libauth.org/)
 - **chaingraph-ts** - Typed GraphQL client for Chaingraph queries
+- **@electrum-cash/protocol** - Electrum Cash client for UTXO verification against full nodes
 
 ### OTR (OpenTokenRegistry) Verification
 
@@ -69,14 +70,40 @@ The app detects chipnet vs mainnet from the node name in the genesis transaction
 - **Metadata hash match** — compares on-chain content hash with fetched content
 - **BCMR origin match** — checks if the BCMR hosting domain matches the token's web URL
 - **OTR verification** — checks if tokenId is present in the OpenTokenRegistry
+- **Electrum UTXO verification** — cross-checks Chaingraph UTXOs against Electrum to detect stale data
 
 When verification fails or metadata can't be fetched, `fetchMetadata()` populates a `diagnostics` array on `MetadataInfo` with structured errors (type, message, details). Error classification is IPFS-aware. The `DiagnosticsSection` component renders these in an expandable details block.
 
 ### Reserved & Circulating Supply
 
-Reserved supply = FT held on unspent outputs carrying a **minting or mutable** NFT of the same category (issuing covenant UTXOs) + FT on the authhead identity output. Circulating supply = total supply − reserved. Calculation logic is in `src/utils/calculations.ts` (`calculateReservedSupplyFT`).
+There are two supply calculations displayed in the UI:
 
-`queryAllTokenHolders` is paginated (5000 per page) and is the single source for all supply calculations, holder counts, NFT counts, and issuing covenant UTXO counts.
+**Primary (Electrum-verified):** Circulating supply = genesis supply − reserved supply. Reserved supply is calculated from Electrum-verified UTXOs (minting/mutable NFT outputs + authhead identity output FT). This is shown at the top and is reliable because it uses Electrum to confirm which Chaingraph UTXOs are actually unspent. See `src/utils/queryElectrum.ts`.
+
+**Advanced (Chaingraph-only):** Circulating supply excl. burns = totalSupplyFT − reservedSupplyFT. This uses `queryAllTokenHolders` (paginated, 5000 per page) to sum all unspent token outputs. Shown in the "Advanced ChainGraph Info" section. This method is less reliable when Chaingraph has stale data but can detect burns (genesis > current total).
+
+### Electrum Verification
+
+The Chaingraph instance (`gql.chaingraph.pat.mn`) can serve stale UTXO data — reporting spent UTXOs as still unspent. To detect and correct this, the app cross-verifies token UTXOs via Electrum Cash servers which talk to full nodes directly. See `src/utils/queryElectrum.ts`.
+
+**Flow:**
+1. After `queryAllTokenHolders` completes (Phase 2), collect all unique locking bytecodes from the results
+2. Convert each to a CashAddress via `lockingBytecodeToCashAddress` (libauth)
+3. Connect to Electrum server (mainnet: `electrum.imaginary.cash`, chipnet: `chipnet.bch.ninja`) with `disableBrowserVisibilityHandling: true` to prevent disconnects when the tab loses focus
+4. Query all addresses in parallel via `fetchUnspentTransactionOutputs` with token filter
+5. Filter Electrum results by token category, compare UTXO sets (match on `tx_hash` + `tx_pos`)
+6. Track: stale UTXOs (in Chaingraph but not Electrum), missing UTXOs (in Electrum but not Chaingraph), and recalculate reserved FT from Electrum data (including authhead identity output)
+7. Also verify the authhead UTXO is unspent — shown as a badge in AuthchainInfo
+
+**UI display:**
+- Supply section waits for Electrum before showing circulating/reserved (to avoid flashing wrong numbers from stale Chaingraph data)
+- Green badge: "supply verified via Electrum" when Chaingraph and Electrum reserves match
+- Blue badge: "used Electrum to select the accurate UTXOs from Chaingraph" when they differ
+- Yellow warning in Advanced section when Chaingraph UTXOs don't match Electrum
+- Green badge on authhead: "authhead UTXO confirmed unspent via Electrum"
+- Electrum failure is non-blocking — falls back to Chaingraph with "(unverified)" label
+
+**Constants:** Electrum server hostnames are in `src/constants.ts` (`ELECTRUM_MAINNET`, `ELECTRUM_CHIPNET`).
 
 ### Token Data Types
 
