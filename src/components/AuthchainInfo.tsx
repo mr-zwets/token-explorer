@@ -1,10 +1,11 @@
-import type { TokenInfo, MetadataInfo, AuthchainEntry, Diagnostic } from '@/interfaces'
+import type { TokenInfo, MetadataInfo, AuthchainEntry, Diagnostic, ElectrumVerification } from '@/interfaces'
 import { formatTimestamp } from '@/utils/utils'
 import { BLOCK_EXPLORER_URL } from '@/constants'
 
 interface AuthchainInfoProps {
   tokenInfo: TokenInfo
   metadataInfo: MetadataInfo | undefined
+  electrumVerification?: ElectrumVerification
 }
 
 const getBaseDomain = (url: string) => {
@@ -243,7 +244,7 @@ function DiagnosticsSection({ diagnostics }: { diagnostics?: Diagnostic[] }) {
   )
 }
 
-export function AuthchainInfo({ tokenInfo, metadataInfo }: AuthchainInfoProps) {
+export function AuthchainInfo({ tokenInfo, metadataInfo, electrumVerification }: AuthchainInfoProps) {
   const webUrl = metadataInfo?.tokenMetadata?.uris?.web
   const bcmrBaseDomain = metadataInfo?.httpsUrl ? getBaseDomain(metadataInfo.httpsUrl) : undefined
   const webBaseDomain = webUrl ? getBaseDomain(webUrl) : undefined
@@ -268,7 +269,18 @@ export function AuthchainInfo({ tokenInfo, metadataInfo }: AuthchainInfoProps) {
           authHead txid: {' '}
           <a href={BLOCK_EXPLORER_URL + tokenInfo.authHead} target="_blank" rel="noreferrer" style={{ color: "black" }}>
             {tokenInfo.authHead}
-          </a><br />
+          </a>
+          {electrumVerification?.authHeadUnspent === true && (
+            <div style={{ padding: '6px 10px', marginTop: '16px', backgroundColor: '#d4edda', border: '1px solid #28a745', borderRadius: '6px', fontSize: '0.85em', color: '#155724' }}>
+              authhead UTXO confirmed unspent via Electrum
+            </div>
+          )}
+          {electrumVerification?.authHeadUnspent === false && (
+            <div style={{ padding: '6px 10px', marginTop: '16px', backgroundColor: '#fff3cd', border: '1px solid #ffc107', borderRadius: '6px', fontSize: '0.85em', color: '#856404' }}>
+              authhead UTXO not found via Electrum — may be spent (Chaingraph stale)
+            </div>
+          )}
+          <br />
 
           {tokenInfo.authHeadTimestamp && (
             <>

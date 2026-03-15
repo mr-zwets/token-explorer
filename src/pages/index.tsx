@@ -243,6 +243,9 @@ export default function Home() {
     // Start holder query early so it runs in parallel, but await it in Phase 2
     const holderDataPromise = queryAllTokenHolders(tokenId)
     let network: 'mainnet' | 'chipnet' = 'mainnet'
+    let authHead = ''
+    let authHeadVout = 0
+    let authHeadAddress: string | undefined
 
     try {
       // Start all queries in parallel, but don't block on the slow holder query
@@ -307,7 +310,7 @@ export default function Home() {
       const identityOutput = authheadData?.identity_output?.[0]
 
       const authchainLength = authchainData?.authchain_length ?? 0
-      const authHead = authheadData?.hash?.slice(2) ?? ''
+      authHead = authheadData?.hash?.slice(2) ?? ''
       const authheadReservedFT = +(identityOutput?.fungible_token_amount ?? 0)
       const authHeadLockingBytecode = identityOutput?.locking_bytecode as string | undefined
 
@@ -321,7 +324,6 @@ export default function Home() {
         output => output.locking_bytecode?.slice(2).toLowerCase().startsWith(BCMR_OP_RETURN_PREFIX)
       ) ?? false
 
-      let authHeadAddress: string | undefined
       let usesAuthGuard = false
       if (authHeadLockingBytecode) {
         const bytecodeHex = authHeadLockingBytecode.slice(2)
@@ -384,7 +386,7 @@ export default function Home() {
       ])
 
       // Add authhead identity output to reserved supply UTXOs if it holds FT
-      const authHeadVout = Number(identityOutput?.output_index ?? 0)
+      authHeadVout = Number(identityOutput?.output_index ?? 0)
       const authHeadAlreadyIncluded = reservedSupplyUtxos.some(
         u => u.txHash === authHead && u.vout === authHeadVout
       )
@@ -482,7 +484,7 @@ export default function Home() {
       })
 
       // Phase 3: Verify supply via Electrum (background, non-blocking)
-      verifySupplyViaElectrum(allTokenOutputs, tokenId, network).then(
+      verifySupplyViaElectrum(allTokenOutputs, tokenId, network, authHead ? { txHash: authHead, vout: authHeadVout, address: authHeadAddress } : undefined).then(
         result => setElectrumVerification(result),
         error => {
           console.error("Electrum verification failed:", error)
@@ -595,6 +597,7 @@ export default function Home() {
                 <AuthchainInfo
                   tokenInfo={tokenInfo}
                   metadataInfo={metadataInfo}
+                  electrumVerification={electrumVerification}
                 />
                 {tokenInfo.network === 'mainnet' && (
                   <div>

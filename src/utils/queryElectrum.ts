@@ -14,7 +14,8 @@ interface ChaingraphOutput {
 export async function verifySupplyViaElectrum(
   chaingraphOutputs: ChaingraphOutput[],
   tokenId: string,
-  network: 'mainnet' | 'chipnet'
+  network: 'mainnet' | 'chipnet',
+  authHead?: { txHash: string, vout: number, address?: string }
 ): Promise<ElectrumVerification> {
   const hostname = network === 'chipnet' ? ELECTRUM_CHIPNET : ELECTRUM_MAINNET
   const prefix = network === 'chipnet' ? 'bchtest' : 'bitcoincash'
@@ -91,9 +92,10 @@ export async function verifySupplyViaElectrum(
         const ftAmount = parseInt(utxo.token_data?.amount ?? '0')
         electrumTotalFT += ftAmount
 
-        // Reserved = FT on minting or mutable NFT outputs
+        // Reserved = FT on minting/mutable NFT outputs + authhead identity output
         const capability = utxo.token_data?.nft?.capability
-        if (capability === 'minting' || capability === 'mutable') {
+        const isAuthhead = authHead && utxo.tx_hash === authHead.txHash && utxo.tx_pos === authHead.vout
+        if (capability === 'minting' || capability === 'mutable' || isAuthhead) {
           electrumReservedFT += ftAmount
         }
       }
@@ -115,9 +117,24 @@ export async function verifySupplyViaElectrum(
       }
     }
 
+    // Check if authhead UTXO is unspent according to Electrum
+    let authHeadUnspent: boolean | undefined
+    if (authHead) {
+      authHeadUnspent = electrumUtxoSet.has(`${authHead.txHash}:${authHead.vout}`)
+
+      // If not found yet, the authhead address might not be in allTokenOutputs
+      // (e.g. identity output without tokens). Query its address directly.
+      if (!authHeadUnspent && authHead.address) {
+        const authUtxos = await fetchUnspentTransactionOutputs(client, authHead.address, true, true)
+        authHeadUnspent = authUtxos.some(
+          u => u.tx_hash === authHead.txHash && u.tx_pos === authHead.vout
+        )
+      }
+    }
+
     const verified = staleCount === 0 && missingCount === 0
     console.timeEnd('electrum:total')
-    console.log(`electrum: result — ${totalElectrumUtxos} UTXOs, ${staleCount} stale, ${missingCount} missing, verified=${verified}`)
+    console.log(`electrum: result — ${totalElectrumUtxos} UTXOs, ${staleCount} stale, ${missingCount} missing, verified=${verified}, authHeadUnspent=${authHeadUnspent}`)
 
     return {
       verified,
@@ -128,6 +145,7 @@ export async function verifySupplyViaElectrum(
       chaingraphTotalFT,
       electrumTotalFT,
       electrumReservedFT,
+      authHeadUnspent,
     }
   } finally {
     try { await client.disconnect() } catch { /* ignore disconnect errors */ }

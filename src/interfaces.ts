@@ -75,6 +75,7 @@ export interface ElectrumVerification {
   chaingraphTotalFT: number
   electrumTotalFT: number
   electrumReservedFT: number
+  authHeadUnspent?: boolean
   error?: string
 }
 
