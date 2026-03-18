@@ -82,16 +82,16 @@ function ElectrumVerificationBadge({ verification }: { verification: ElectrumVer
   return (
     <div style={{ padding: '8px 12px', backgroundColor: '#fff3cd', border: '1px solid #ffc107', borderRadius: '6px', fontSize: '0.9em', color: '#856404' }}>
       <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-        Chaingraph data may be stale — Electrum reports different UTXOs
+        Chaingraph data may be stale — Electrum could not confirm all UTXOs
       </div>
-      <div>Chaingraph UTXOs: {verification.totalChaingraphUtxos.toLocaleString("en-GB")} | Electrum UTXOs: {verification.totalElectrumUtxos.toLocaleString("en-GB")}</div>
+      <div>Chaingraph UTXOs: {verification.totalChaingraphUtxos.toLocaleString("en-GB")} — Electrum verified {verification.totalElectrumUtxos.toLocaleString("en-GB")} of those</div>
       {verification.staleCount > 0 && (
-        <div>{verification.staleCount.toLocaleString("en-GB")} UTXO{verification.staleCount > 1 ? 's' : ''} in Chaingraph but not in Electrum (likely spent)</div>
+        <div>{verification.staleCount.toLocaleString("en-GB")} UTXO{verification.staleCount > 1 ? 's' : ''} in Chaingraph not confirmed by Electrum (likely already spent)</div>
       )}
       {verification.missingCount > 0 && (
-        <div>{verification.missingCount.toLocaleString("en-GB")} UTXO{verification.missingCount > 1 ? 's' : ''} in Electrum but not in Chaingraph (not yet indexed)</div>
+        <div>{verification.missingCount.toLocaleString("en-GB")} UTXO{verification.missingCount > 1 ? 's' : ''} found by Electrum but not in Chaingraph (not yet indexed)</div>
       )}
-      <div style={{ marginTop: '4px' }}>Advanced Chaingraph stats below might display wrong info.</div>
+      <div style={{ marginTop: '4px' }}>Advanced Chaingraph stats below may be inaccurate due to this stale data.</div>
     </div>
   )
 }
