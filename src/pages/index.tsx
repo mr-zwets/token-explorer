@@ -246,6 +246,7 @@ export default function Home() {
     let authHead = ''
     let authHeadVout = 0
     let authHeadAddress: string | undefined
+    let authHeadBurned = false
 
     try {
       // Start all queries in parallel, but don't block on the slow holder query
@@ -311,8 +312,14 @@ export default function Home() {
 
       const authchainLength = authchainData?.authchain_length ?? 0
       authHead = authheadData?.hash?.slice(2) ?? ''
+
       const authheadReservedFT = +(identityOutput?.fungible_token_amount ?? 0)
       const authHeadLockingBytecode = identityOutput?.locking_bytecode as string | undefined
+
+      // Check if the authhead's identity output (output 0) is an OP_RETURN.
+      // If so, the authchain is burned — it can never be extended since OP_RETURN is unspendable.
+      const identityBytecodeHex = identityOutput?.locking_bytecode?.slice(2) ?? ''
+      authHeadBurned = identityBytecodeHex.startsWith('6a')
 
       // Parse authhead timestamp and check if it's a metadata update
       const authHeadBlockTimestamp = authheadData?.block_inclusions?.[0]?.block?.timestamp
@@ -423,6 +430,7 @@ export default function Home() {
         authHeadAddress,
         authHeadTimestamp,
         authHeadIsMetadataUpdate,
+        authHeadBurned,
         usesAuthGuard,
         network,
         authchainMigrations: filteredMigrations
@@ -484,7 +492,9 @@ export default function Home() {
       })
 
       // Phase 3: Verify supply via Electrum (background, non-blocking)
-      verifySupplyViaElectrum(allTokenOutputs, tokenId, network, authHead ? { txHash: authHead, vout: authHeadVout, address: authHeadAddress } : undefined).then(
+      // Don't pass authHead for Electrum check if the authhead is burned (OP_RETURN identity output)
+      const authHeadForElectrum = (authHead && !authHeadBurned) ? { txHash: authHead, vout: authHeadVout, address: authHeadAddress } : undefined
+      verifySupplyViaElectrum(allTokenOutputs, tokenId, network, authHeadForElectrum).then(
         result => setElectrumVerification(result),
         error => {
           console.error("Electrum verification failed:", error)

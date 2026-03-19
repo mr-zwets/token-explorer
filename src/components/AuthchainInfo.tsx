@@ -15,7 +15,7 @@ const getBaseDomain = (url: string) => {
   } catch { return undefined }
 }
 
-function AuthchainTimeline({ migrations, bcmrEntries, genesisTx, authHead }: { migrations?: AuthchainEntry[], bcmrEntries?: AuthchainEntry[], genesisTx?: string, authHead?: string }) {
+function AuthchainTimeline({ migrations, bcmrEntries, genesisTx, authHead, authHeadBurned }: { migrations?: AuthchainEntry[], bcmrEntries?: AuthchainEntry[], genesisTx?: string, authHead?: string, authHeadBurned?: boolean }) {
   if (!migrations || migrations.length === 0) return null
 
   // Merge: use migrations as the base timeline, enrich with BCMR data
@@ -78,6 +78,19 @@ function AuthchainTimeline({ migrations, bcmrEntries, genesisTx, authHead }: { m
                   color: '#3d2b6b'
                 }}>
                   authhead
+                </span>
+              )}
+              {entry.txHash === authHead && authHeadBurned && (
+                <span style={{
+                  display: 'inline-block',
+                  padding: '1px 6px',
+                  fontSize: '0.85em',
+                  borderRadius: '4px',
+                  marginLeft: '4px',
+                  backgroundColor: '#f8d7da',
+                  color: '#721c24'
+                }}>
+                  burned
                 </span>
               )}
             </div>
@@ -270,12 +283,15 @@ export function AuthchainInfo({ tokenInfo, metadataInfo, electrumVerification }:
           <a href={BLOCK_EXPLORER_URL + tokenInfo.authHead} target="_blank" rel="noreferrer" style={{ color: "black" }}>
             {tokenInfo.authHead}
           </a>
-          {electrumVerification?.authHeadUnspent === true && (
+          {tokenInfo.authHeadBurned && (
+            <><br />authhead burned (identity output is OP_RETURN and hence unspendable)</>
+          )}
+          {!tokenInfo.authHeadBurned && electrumVerification?.authHeadUnspent === true && (
             <div style={{ padding: '6px 10px', marginTop: '16px', backgroundColor: '#d4edda', border: '1px solid #28a745', borderRadius: '6px', fontSize: '0.85em', color: '#155724' }}>
               authhead UTXO confirmed unspent via Electrum
             </div>
           )}
-          {electrumVerification?.authHeadUnspent === false && (
+          {!tokenInfo.authHeadBurned && electrumVerification?.authHeadUnspent === false && (
             <div style={{ padding: '6px 10px', marginTop: '16px', backgroundColor: '#fff3cd', border: '1px solid #ffc107', borderRadius: '6px', fontSize: '0.85em', color: '#856404' }}>
               authhead UTXO not found via Electrum — may be spent (Chaingraph stale)
             </div>
@@ -304,6 +320,7 @@ export function AuthchainInfo({ tokenInfo, metadataInfo, electrumVerification }:
             bcmrEntries={metadataInfo.authchainHistory}
             genesisTx={tokenInfo.genesisTx}
             authHead={tokenInfo.authHead}
+            authHeadBurned={tokenInfo.authHeadBurned}
           />
           <br />
 

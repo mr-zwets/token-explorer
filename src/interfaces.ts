@@ -36,6 +36,7 @@ export interface TokenInfo {
   authHeadAddress?: string
   authHeadTimestamp?: number
   authHeadIsMetadataUpdate?: boolean
+  authHeadBurned?: boolean
   usesAuthGuard?: boolean
   network: 'mainnet' | 'chipnet'
   authchainMigrations?: AuthchainEntry[]
