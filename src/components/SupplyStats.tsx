@@ -226,7 +226,7 @@ export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metada
                                 outpoint: {utxo.txHash}:{utxo.vout}
                               </div>
                               {(() => {
-                                const result = lockingBytecodeToCashAddress({ bytecode: hexToBin(utxo.lockingBytecode), prefix: 'bitcoincash' })
+                                const result = lockingBytecodeToCashAddress({ bytecode: hexToBin(utxo.lockingBytecode), prefix: tokenInfo.network === 'chipnet' ? 'bchtest' : 'bitcoincash' })
                                 const address = typeof result === 'string' ? undefined : result.address
                                 return address ? <div style={{ wordBreak: 'break-all' }}>address: {address}</div> : null
                               })()}

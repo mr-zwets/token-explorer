@@ -330,7 +330,7 @@ export default function Home() {
         usesAuthGuard = bytecodeHex.startsWith('a914')
         const authHeadAddressResult = lockingBytecodeToCashAddress({
           bytecode: hexToBin(bytecodeHex),
-          prefix: 'bitcoincash'
+          prefix: network === 'chipnet' ? 'bchtest' : 'bitcoincash'
         })
         authHeadAddress = typeof authHeadAddressResult === 'string' ? undefined : authHeadAddressResult.address
       }
