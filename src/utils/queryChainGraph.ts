@@ -41,7 +41,18 @@ export async function queryAllTokenHolders(tokenId:string, offset:number = 0){
         limit: 5000
         where: {
           token_category: { _eq: $tokenId }
-          _not: { spent_by: {} }
+          locking_bytecode_pattern: { _neq: "6a" }
+          transaction: { _or: [
+            { node_validations: {} },
+            { block_inclusions: { block: { accepted_by: {} } } }
+            ]
+          }
+          _not: { spent_by: { 
+            transaction: { _or: [
+              { node_validations: {} },
+              { block_inclusions: { block: { accepted_by: {} } } }
+            ] }
+          } }
         }
       ) {
         transaction_hash
@@ -63,7 +74,17 @@ export async function queryIssuingUtxos(tokenId:string){
         where: {
           token_category: { _eq: $tokenId }
           nonfungible_token_capability: { _in: ["minting", "mutable"] }
-          _not: { spent_by: {} }
+          locking_bytecode_pattern: { _neq: "6a" }
+          transaction: { _or: [
+            { node_validations: {} },
+            { block_inclusions: { block: { accepted_by: {} } } }
+          ] }
+          _not: { spent_by: { 
+            transaction: { _or: [
+              { node_validations: {} },
+              { block_inclusions: { block: { accepted_by: {} } } }
+            ] }
+          } }
         }
       ) {
         transaction_hash
@@ -87,6 +108,10 @@ export async function queryGenesisCategories(txHash:string){
         hash: {
           _eq: $txHash
         }
+        _or: [
+          { node_validations: {} },
+          { block_inclusions: { block: { accepted_by: {} } } }
+        ]
       }
     ) {
       inputs(order_by: { input_index: asc }) {
@@ -111,6 +136,10 @@ export async function queryAuthchain(tokenId:string){
         hash: {
           _eq: $tokenId
         }
+        _or: [
+          { node_validations: {} },
+          { block_inclusions: { block: { accepted_by: {} } } }
+        ]
       }
     ) {
       hash
