@@ -1,4 +1,4 @@
-import type { TokenInfo, ExtendedTokenInfo, MetadataInfo, NftCategory, ElectrumVerification } from '@/interfaces'
+import type { TokenInfo, ExtendedTokenInfo, MetadataInfo, NftCategory, ElectrumVerification, ReservedSupplyUtxo } from '@/interfaces'
 import { lockingBytecodeToCashAddress, hexToBin } from '@bitauth/libauth'
 
 interface SupplyStatsProps {
@@ -96,14 +96,79 @@ function ElectrumVerificationBadge({ verification }: { verification: ElectrumVer
   )
 }
 
+function UtxoEntry({ utxo, network, displayTokenAmount }: { utxo: ReservedSupplyUtxo; network: 'mainnet' | 'chipnet'; displayTokenAmount: (amount: bigint) => string }) {
+  const isAuthhead = !!utxo.isAuthhead
+  const isCovenant = !utxo.lockingBytecode.startsWith('76a914')
+  const result = lockingBytecodeToCashAddress({ bytecode: hexToBin(utxo.lockingBytecode), prefix: network === 'chipnet' ? 'bchtest' : 'bitcoincash' })
+  const address = typeof result === 'string' ? undefined : result.address
+  return (
+    <div style={{ marginBottom: '14px', paddingLeft: '8px', borderLeft: '2px solid #ccc', lineHeight: '1.6' }}>
+      <div>
+        {utxo.nftCapability && (
+          <span style={{
+            display: 'inline-block',
+            padding: '1px 6px',
+            fontSize: '0.85em',
+            borderRadius: '4px',
+            backgroundColor: utxo.nftCapability === 'minting' ? '#d4edda' : '#fff3cd',
+            color: utxo.nftCapability === 'minting' ? '#155724' : '#856404'
+          }}>
+            {utxo.nftCapability}
+          </span>
+        )}
+        {isCovenant && (
+          <span style={{
+            display: 'inline-block',
+            padding: '1px 6px',
+            fontSize: '0.85em',
+            borderRadius: '4px',
+            marginLeft: utxo.nftCapability ? '4px' : undefined,
+            backgroundColor: '#cce5ff',
+            color: '#004085'
+          }}>
+            covenant
+          </span>
+        )}
+        {isAuthhead && (
+          <span style={{
+            display: 'inline-block',
+            padding: '1px 6px',
+            fontSize: '0.85em',
+            borderRadius: '4px',
+            marginLeft: utxo.nftCapability || isCovenant ? '4px' : undefined,
+            backgroundColor: '#e2d9f3',
+            color: '#3d2b6b'
+          }}>
+            authhead
+          </span>
+        )}
+      </div>
+      <div style={{ wordBreak: 'break-all' }}>
+        outpoint: {utxo.txHash}:{utxo.vout}
+      </div>
+      {address && <div style={{ wordBreak: 'break-all' }}>address: {address}</div>}
+      <div>FT amount: {displayTokenAmount(utxo.fungibleTokenAmount)}</div>
+    </div>
+  )
+}
+
 export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metadataInfo, electrumVerification }: SupplyStatsProps) {
   const decimals = metadataInfo?.tokenMetadata?.token?.decimals ?? 0
   const symbol = metadataInfo?.tokenMetadata?.token?.symbol ?? ''
   const nfts = metadataInfo?.tokenMetadata?.token?.nfts
 
-  const displayTokenAmount = (amount: number) => {
-    const amountDecimals = amount / (10 ** decimals)
-    return amountDecimals.toLocaleString("en-GB") + ' ' + symbol
+  const displayTokenAmount = (amount: bigint) => {
+    if (decimals === 0) return amount.toLocaleString("en-GB") + ' ' + symbol
+    const negative = amount < 0n
+    const absAmount = negative ? -amount : amount
+    const divisor = 10n ** BigInt(decimals)
+    const whole = absAmount / divisor
+    const fractional = absAmount % divisor
+    const wholeStr = whole.toLocaleString("en-GB")
+    const fractionalStr = fractional.toString().padStart(decimals, '0').replace(/0+$/, '')
+    const sign = negative ? '-' : ''
+    if (fractionalStr === '') return `${sign}${wholeStr} ${symbol}`
+    return `${sign}${wholeStr}.${fractionalStr} ${symbol}`
   }
 
   const toPercentage = (decimalNumber: number) => {
@@ -129,13 +194,13 @@ export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metada
         <><NftParseDetails nfts={nfts} /><br /></>
       )}
 
-      {tokenInfo.genesisSupplyFT > 0 && (
+      {tokenInfo.genesisSupplyFT > 0n && (
         <>
           genesis supply: {displayTokenAmount(tokenInfo.genesisSupplyFT)} <br /><br />
         </>
       )}
 
-      {metadataInfo?.tokenMetadata && tokenInfo.genesisSupplyFT > 0 && (
+      {metadataInfo?.tokenMetadata && tokenInfo.genesisSupplyFT > 0n && (
         <>
           {/* Naive circulating supply: genesis - reserved (only shown with Electrum verification) */}
           {(() => {
@@ -166,9 +231,10 @@ export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metada
                 reserved supply: {displayTokenAmount(reservedFT)}
                 <br /><br />
                 {(() => {
-                  const covenantUtxos = tokenInfo.reservedSupplyUtxos.filter(utxo => !utxo.isAuthhead && !utxo.lockingBytecode.startsWith('76a914'))
-                  const p2pkhUtxos = tokenInfo.reservedSupplyUtxos.filter(utxo => !utxo.isAuthhead && utxo.lockingBytecode.startsWith('76a914'))
-                  const authheadUtxo = tokenInfo.reservedSupplyUtxos.find(utxo => utxo.isAuthhead)
+                  const reservedUtxos = tokenInfo.reservedSupplyUtxos.filter(utxo => utxo.isAuthhead || utxo.fungibleTokenAmount > 0n)
+                  const covenantUtxos = reservedUtxos.filter(utxo => !utxo.isAuthhead && !utxo.lockingBytecode.startsWith('76a914'))
+                  const p2pkhUtxos = reservedUtxos.filter(utxo => !utxo.isAuthhead && utxo.lockingBytecode.startsWith('76a914'))
+                  const authheadUtxo = reservedUtxos.find(utxo => utxo.isAuthhead)
                   const summaryParts: string[] = []
                   if (covenantUtxos.length > 0) summaryParts.push(`${covenantUtxos.length} issuing covenant UTXO${covenantUtxos.length > 1 ? 's' : ''}`)
                   if (p2pkhUtxos.length > 0) summaryParts.push(`${p2pkhUtxos.length} P2PKH UTXO${p2pkhUtxos.length > 1 ? 's' : ''}`)
@@ -177,63 +243,9 @@ export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metada
                     <details>
                       <summary style={{ cursor: 'pointer' }}>reserved supply held on {summaryParts.join(' and ')}</summary>
                       <div style={{ marginTop: '8px', marginLeft: '8px' }}>
-                        {tokenInfo.reservedSupplyUtxos.map(utxo => {
-                          const isAuthhead = !!utxo.isAuthhead
-                          const isCovenant = !utxo.lockingBytecode.startsWith('76a914')
-                          return (
-                            <div key={`${utxo.txHash}:${utxo.vout}`} style={{ marginBottom: '14px', paddingLeft: '8px', borderLeft: '2px solid #ccc', lineHeight: '1.6' }}>
-                              <div>
-                                {utxo.nftCapability && (
-                                  <span style={{
-                                    display: 'inline-block',
-                                    padding: '1px 6px',
-                                    fontSize: '0.85em',
-                                    borderRadius: '4px',
-                                    backgroundColor: utxo.nftCapability === 'minting' ? '#d4edda' : '#fff3cd',
-                                    color: utxo.nftCapability === 'minting' ? '#155724' : '#856404'
-                                  }}>
-                                    {utxo.nftCapability}
-                                  </span>
-                                )}
-                                {isCovenant && (
-                                  <span style={{
-                                    display: 'inline-block',
-                                    padding: '1px 6px',
-                                    fontSize: '0.85em',
-                                    borderRadius: '4px',
-                                    marginLeft: utxo.nftCapability ? '4px' : undefined,
-                                    backgroundColor: '#cce5ff',
-                                    color: '#004085'
-                                  }}>
-                                    covenant
-                                  </span>
-                                )}
-                                {isAuthhead && (
-                                  <span style={{
-                                    display: 'inline-block',
-                                    padding: '1px 6px',
-                                    fontSize: '0.85em',
-                                    borderRadius: '4px',
-                                    marginLeft: utxo.nftCapability || isCovenant ? '4px' : undefined,
-                                    backgroundColor: '#e2d9f3',
-                                    color: '#3d2b6b'
-                                  }}>
-                                    authhead
-                                  </span>
-                                )}
-                              </div>
-                              <div style={{ wordBreak: 'break-all' }}>
-                                outpoint: {utxo.txHash}:{utxo.vout}
-                              </div>
-                              {(() => {
-                                const result = lockingBytecodeToCashAddress({ bytecode: hexToBin(utxo.lockingBytecode), prefix: tokenInfo.network === 'chipnet' ? 'bchtest' : 'bitcoincash' })
-                                const address = typeof result === 'string' ? undefined : result.address
-                                return address ? <div style={{ wordBreak: 'break-all' }}>address: {address}</div> : null
-                              })()}
-                              <div>reserved FT: {displayTokenAmount(utxo.fungibleTokenAmount)}</div>
-                            </div>
-                          )
-                        })}
+                        {reservedUtxos.map(utxo => (
+                          <UtxoEntry key={`${utxo.txHash}:${utxo.vout}`} utxo={utxo} network={tokenInfo.network} displayTokenAmount={displayTokenAmount} />
+                        ))}
                       </div>
                     </details>
                   )
@@ -269,7 +281,7 @@ export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metada
         )
       )}
 
-      {extendedInfo && metadataInfo?.tokenMetadata && tokenInfo.genesisSupplyFT > 0 && (
+      {extendedInfo && metadataInfo?.tokenMetadata && tokenInfo.genesisSupplyFT > 0n && (
         <>
           {(() => {
             const burned = tokenInfo.genesisSupplyFT - extendedInfo.totalSupplyFT
@@ -277,7 +289,7 @@ export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metada
             return (
               <>
                 reserved supply (Chaingraph): {displayTokenAmount(tokenInfo.reservedSupplyFT)}<br /><br />
-                {burned > 0 && (
+                {burned > 0n && (
                   <>
                     burned: {displayTokenAmount(burned)}<br />
                   </>
@@ -300,6 +312,19 @@ export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metada
           })()}
           <br /><br />
           has active minting NFT: {tokenInfo.hasActiveMintingToken ? "yes" : "no"} <br /><br />
+          {tokenInfo.reservedSupplyUtxos.length > 0 && (
+            <>
+              <details>
+                <summary style={{ cursor: 'pointer' }}>display all minting + mutable NFT UTXOs ({tokenInfo.reservedSupplyUtxos.length})</summary>
+                <div style={{ marginTop: '8px', marginLeft: '8px' }}>
+                  {tokenInfo.reservedSupplyUtxos.map(utxo => (
+                    <UtxoEntry key={`${utxo.txHash}:${utxo.vout}`} utxo={utxo} network={tokenInfo.network} displayTokenAmount={displayTokenAmount} />
+                  ))}
+                </div>
+              </details>
+              <br />
+            </>
+          )}
         </>
       )}
 
@@ -310,10 +335,10 @@ export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metada
               number of user-addresses holding {symbol || 'the token'}: {extendedInfo.numberHolders.toLocaleString("en-GB")}<br /><br />
               number of smart contract addresses holding {symbol || 'the token'}: {(extendedInfo.numberTokenAddresses - extendedInfo.numberHolders).toLocaleString("en-GB")}<br /><br />
               total number of addresses holding {symbol || 'the token'}: {extendedInfo.numberTokenAddresses.toLocaleString("en-GB")}<br /><br />
-              {tokenInfo.genesisSupplyFT > 0 && extendedInfo.userSupplyFT > 0 && (
+              {tokenInfo.genesisSupplyFT > 0n && extendedInfo.userSupplyFT > 0n && (
                 <>circulating supply held on user addresses: {displayTokenAmount(extendedInfo.userSupplyFT)}<br /><br /></>
               )}
-              {tokenInfo.genesisSupplyFT > 0 && extendedInfo.contractSupplyFT > 0 && (
+              {tokenInfo.genesisSupplyFT > 0n && extendedInfo.contractSupplyFT > 0n && (
                 <>circulating supply held on smart contracts: {displayTokenAmount(extendedInfo.contractSupplyFT)}<br /><br /></>
               )}
             </>

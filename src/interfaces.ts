@@ -18,18 +18,18 @@ export interface ReservedSupplyUtxo {
   txHash: string
   vout: number
   lockingBytecode: string
-  fungibleTokenAmount: number
+  fungibleTokenAmount: bigint
   nftCapability: 'minting' | 'mutable' | null
   isAuthhead?: boolean
 }
 
 export interface TokenInfo {
-  genesisSupplyFT: number
+  genesisSupplyFT: bigint
   hasGenesisNFTs: boolean
   genesisTxTimestamp: number | undefined
   hasActiveMintingToken: boolean
   reservedSupplyUtxos: ReservedSupplyUtxo[]
-  reservedSupplyFT: number
+  reservedSupplyFT: bigint
   genesisTx: string
   authchainLength?: number
   authHead?: string
@@ -46,12 +46,12 @@ export interface TokenInfo {
 }
 
 export interface ExtendedTokenInfo {
-  totalSupplyFT: number
+  totalSupplyFT: bigint
   totalSupplyNFTs: number
   numberHolders: number
   numberTokenAddresses: number
-  userSupplyFT: number
-  contractSupplyFT: number
+  userSupplyFT: bigint
+  contractSupplyFT: bigint
 }
 
 export type DiagnosticType =
@@ -73,9 +73,9 @@ export interface ElectrumVerification {
   totalElectrumUtxos: number
   staleCount: number
   missingCount: number
-  chaingraphTotalFT: number
-  electrumTotalFT: number
-  electrumReservedFT: number
+  chaingraphTotalFT: bigint
+  electrumTotalFT: bigint
+  electrumReservedFT: bigint
   authHeadUnspent?: boolean
   error?: string
 }

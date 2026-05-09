@@ -280,12 +280,12 @@ export default function Home() {
       const nodeName = respJsonAuthchain.transaction[0]?.block_inclusions?.[0]?.block?.accepted_by?.[0]?.node?.name
       network = nodeName?.includes('chipnet') ? 'chipnet' : 'mainnet'
 
-      let genesisSupplyFT = 0
+      let genesisSupplyFT = 0n
       let hasGenesisNFTs = false
       if (genesisTransaction?.outputs) {
         genesisSupplyFT = genesisTransaction.outputs.reduce(
-          (total: number, output) => total + parseInt(output?.fungible_token_amount ?? '0'),
-          0
+          (total: bigint, output) => total + BigInt(output?.fungible_token_amount ?? '0'),
+          0n
         )
         hasGenesisNFTs = genesisTransaction.outputs.some(
           output => output.nonfungible_token_capability != null
@@ -297,12 +297,12 @@ export default function Home() {
         txHash: (o.transaction_hash as string).slice(2),
         vout: Number(o.output_index),
         lockingBytecode: (o.locking_bytecode as string).slice(2),
-        fungibleTokenAmount: parseInt(o.fungible_token_amount ?? "0"),
+        fungibleTokenAmount: BigInt(o.fungible_token_amount ?? "0"),
         nftCapability: o.nonfungible_token_capability as 'minting' | 'mutable'
       }))
       const hasActiveMintingToken = reservedSupplyUtxos.some(utxo => utxo.nftCapability === "minting")
       const covenantReservedFT = reservedSupplyUtxos.reduce(
-        (total, u) => total + u.fungibleTokenAmount, 0
+        (total: bigint, u) => total + u.fungibleTokenAmount, 0n
       )
 
       // Parse authchain data with intermediate variables
@@ -313,7 +313,7 @@ export default function Home() {
       const authchainLength = authchainData?.authchain_length ?? 0
       authHead = authheadData?.hash?.slice(2) ?? ''
 
-      const authheadReservedFT = +(identityOutput?.fungible_token_amount ?? 0)
+      const authheadReservedFT = BigInt(identityOutput?.fungible_token_amount ?? 0)
       const authHeadLockingBytecode = identityOutput?.locking_bytecode as string | undefined
 
       // Check if the authhead's identity output (output 0) is an OP_RETURN.
@@ -363,7 +363,7 @@ export default function Home() {
 
       // Phase 1: set initial tokenInfo from fast queries
       console.timeEnd('initialDataLoad')
-      const validTokenCategory = genesisSupplyFT > 0 || hasGenesisNFTs
+      const validTokenCategory = genesisSupplyFT > 0n || hasGenesisNFTs
 
       // If not a valid token category, check if this tx is a genesis tx for other categories
       let tokenCategoriesInTx: string[] | undefined
@@ -401,7 +401,7 @@ export default function Home() {
         // Mark the existing entry as authhead
         const existing = reservedSupplyUtxos.find(utxo => utxo.txHash === authHead && utxo.vout === authHeadVout)
         if (existing) existing.isAuthhead = true
-      } else if (authheadReservedFT > 0 && authHeadLockingBytecode) {
+      } else if (authheadReservedFT > 0n && authHeadLockingBytecode) {
         reservedSupplyUtxos.push({
           txHash: authHead,
           vout: authHeadVout,
@@ -412,7 +412,7 @@ export default function Home() {
         })
       }
 
-      const reservedSupplyFT = covenantReservedFT + (authHeadAlreadyIncluded ? 0 : authheadReservedFT)
+      const reservedSupplyFT = covenantReservedFT + (authHeadAlreadyIncluded ? 0n : authheadReservedFT)
 
       setTokenInfo({
         validTxId,
@@ -504,9 +504,9 @@ export default function Home() {
             totalElectrumUtxos: 0,
             staleCount: 0,
             missingCount: 0,
-            chaingraphTotalFT: 0,
-            electrumTotalFT: 0,
-            electrumReservedFT: 0,
+            chaingraphTotalFT: 0n,
+            electrumTotalFT: 0n,
+            electrumReservedFT: 0n,
             error: error instanceof Error ? error.message : String(error),
           })
         }

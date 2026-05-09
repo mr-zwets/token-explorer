@@ -43,17 +43,18 @@ export async function verifySupplyViaElectrum(
     }
   }
 
-  // Build Chaingraph UTXO set for matching
-  const chaingraphUtxoSet = new Set<string>()
+  // Build Chaingraph UTXO map for matching + lookup
+  const chaingraphUtxoByKey = new Map<string, ChaingraphOutput>()
   for (const output of chaingraphOutputs) {
     const txHash = (output.transaction_hash as string).slice(2) // remove \x prefix
     const vout = output.output_index
-    chaingraphUtxoSet.add(`${txHash}:${vout}`)
+    chaingraphUtxoByKey.set(`${txHash}:${vout}`, output)
   }
+  const chaingraphUtxoSet = new Set(chaingraphUtxoByKey.keys())
 
-  let chaingraphTotalFT = 0
+  let chaingraphTotalFT = 0n
   for (const output of chaingraphOutputs) {
-    chaingraphTotalFT += parseInt(output.fungible_token_amount ?? '0')
+    chaingraphTotalFT += BigInt(output.fungible_token_amount ?? '0')
   }
 
   // Deduplicate addresses
@@ -68,9 +69,10 @@ export async function verifySupplyViaElectrum(
 
   try {
     let totalElectrumUtxos = 0
-    let electrumTotalFT = 0
-    let electrumReservedFT = 0
+    let electrumTotalFT = 0n
+    let electrumReservedFT = 0n
     const electrumUtxoSet = new Set<string>()
+    const electrumUtxoByKey = new Map<string, { amount: string; capability?: string }>()
 
     console.time('electrum:queries')
     const allResults = await Promise.all(
@@ -88,8 +90,12 @@ export async function verifySupplyViaElectrum(
       for (const utxo of tokenUtxos) {
         const key = `${utxo.tx_hash}:${utxo.tx_pos}`
         electrumUtxoSet.add(key)
+        electrumUtxoByKey.set(key, {
+          amount: utxo.token_data?.amount ?? '0',
+          capability: utxo.token_data?.nft?.capability,
+        })
 
-        const ftAmount = parseInt(utxo.token_data?.amount ?? '0')
+        const ftAmount = BigInt(utxo.token_data?.amount ?? '0')
         electrumTotalFT += ftAmount
 
         // Reserved = FT on minting/mutable NFT outputs + authhead identity output
@@ -102,19 +108,38 @@ export async function verifySupplyViaElectrum(
     }
 
     // Count stale: in Chaingraph but not in Electrum
-    let staleCount = 0
+    const staleUtxos: { key: string; ftAmount: string; capability: string | null; address?: string }[] = []
     for (const key of chaingraphUtxoSet) {
       if (!electrumUtxoSet.has(key)) {
-        staleCount++
+        const output = chaingraphUtxoByKey.get(key)!
+        const bc = output.locking_bytecode.slice(2)
+        staleUtxos.push({
+          key,
+          ftAmount: output.fungible_token_amount ?? '0',
+          capability: output.nonfungible_token_capability ?? null,
+          address: bytecodeToAddress.get(bc),
+        })
       }
     }
+    const staleCount = staleUtxos.length
 
     // Count missing: in Electrum but not in Chaingraph
-    let missingCount = 0
+    const missingUtxos: { key: string; ftAmount: string; capability?: string }[] = []
     for (const key of electrumUtxoSet) {
       if (!chaingraphUtxoSet.has(key)) {
-        missingCount++
+        const data = electrumUtxoByKey.get(key)!
+        missingUtxos.push({ key, ftAmount: data.amount, capability: data.capability })
       }
+    }
+    const missingCount = missingUtxos.length
+
+    if (staleCount > 0) {
+      console.warn(`electrum: ${staleCount} stale UTXO${staleCount > 1 ? 's' : ''} reported by Chaingraph but not found by Electrum (likely already spent):`)
+      console.table(staleUtxos)
+    }
+    if (missingCount > 0) {
+      console.warn(`electrum: ${missingCount} UTXO${missingCount > 1 ? 's' : ''} found by Electrum but not yet in Chaingraph:`)
+      console.table(missingUtxos)
     }
 
     // Check if authhead UTXO is unspent according to Electrum
