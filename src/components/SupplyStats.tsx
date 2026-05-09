@@ -190,6 +190,13 @@ export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metada
     <>
       token type: {getTokenType()}<br /><br />
 
+      {(tokenInfo.genesisInfoError || tokenInfo.issuingUtxosError) && (
+        <div style={{ padding: '8px 12px', backgroundColor: '#fff3cd', border: '1px solid #ffc107', borderRadius: '6px', fontSize: '0.9em', color: '#856404', marginBottom: '12px' }}>
+          {tokenInfo.genesisInfoError && <div>{tokenInfo.genesisInfoError} — genesis supply and NFT presence can&apos;t be shown.</div>}
+          {tokenInfo.issuingUtxosError && <div>{tokenInfo.issuingUtxosError} — reserved supply can&apos;t be shown.</div>}
+        </div>
+      )}
+
       {nfts && Object.keys(nfts.parse.types).length > 0 && (
         <><NftParseDetails nfts={nfts} /><br /></>
       )}
@@ -200,7 +207,7 @@ export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metada
         </>
       )}
 
-      {metadataInfo?.tokenMetadata && tokenInfo.genesisSupplyFT > 0n && (
+      {!tokenInfo.issuingUtxosError && metadataInfo?.tokenMetadata && tokenInfo.genesisSupplyFT > 0n && (
         <>
           {/* Naive circulating supply: genesis - reserved (only shown with Electrum verification) */}
           {(() => {
@@ -281,7 +288,7 @@ export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metada
         )
       )}
 
-      {extendedInfo && metadataInfo?.tokenMetadata && tokenInfo.genesisSupplyFT > 0n && (
+      {!tokenInfo.issuingUtxosError && extendedInfo && metadataInfo?.tokenMetadata && tokenInfo.genesisSupplyFT > 0n && (
         <>
           {(() => {
             const burned = tokenInfo.genesisSupplyFT - extendedInfo.totalSupplyFT
@@ -304,15 +311,17 @@ export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metada
       {extendedInfo && extendedInfo.totalSupplyNFTs > 0 && (
         <>
           total amount NFTs: {extendedInfo.totalSupplyNFTs.toLocaleString("en-GB")}
-          {(() => {
+          {!tokenInfo.issuingUtxosError && (() => {
             const mintingCount = tokenInfo.reservedSupplyUtxos.filter(utxo => utxo.nftCapability === 'minting').length
             return mintingCount > 0 && (
               <> (incl. {mintingCount} minting NFT{mintingCount > 1 ? 's' : ''})</>
             )
           })()}
           <br /><br />
-          has active minting NFT: {tokenInfo.hasActiveMintingToken ? "yes" : "no"} <br /><br />
-          {tokenInfo.reservedSupplyUtxos.length > 0 && (
+          {!tokenInfo.issuingUtxosError && (
+            <>has active minting NFT: {tokenInfo.hasActiveMintingToken ? "yes" : "no"} <br /><br /></>
+          )}
+          {!tokenInfo.issuingUtxosError && tokenInfo.reservedSupplyUtxos.length > 0 && (
             <>
               <details>
                 <summary style={{ cursor: 'pointer' }}>display all minting + mutable NFT UTXOs ({tokenInfo.reservedSupplyUtxos.length})</summary>

@@ -252,29 +252,47 @@ export default function Home() {
       // Start all queries in parallel, but don't block on the slow holder query
       console.time('initialDataLoad')
 
-      const [
-        respJsonGenesisSupply,
-        respJsonIssuingUtxos,
-        respJsonAuthchain
-      ] = await Promise.all([
-        queryGenesisInfo(tokenId),
-        queryIssuingUtxos(tokenId),
-        queryAuthchain(tokenId)
+      const QUERY_TIMEOUT_MS = 20_000
+      const withTimeout = <T,>(p: Promise<T>, label: string): Promise<T> =>
+        Promise.race([
+          p,
+          new Promise<T>((_, reject) =>
+            setTimeout(() => reject(new Error(`${label} timed out after ${QUERY_TIMEOUT_MS}ms`)), QUERY_TIMEOUT_MS)
+          )
+        ])
+
+      const [genesisResult, issuingResult, authchainResult] = await Promise.allSettled([
+        withTimeout(queryGenesisInfo(tokenId), 'queryGenesisInfo'),
+        withTimeout(queryIssuingUtxos(tokenId), 'queryIssuingUtxos'),
+        withTimeout(queryAuthchain(tokenId), 'queryAuthchain')
       ])
 
-      if (!respJsonGenesisSupply || !respJsonIssuingUtxos || !respJsonAuthchain) {
-        console.error("Error in Chaingraph fetches: one or more queries returned null")
-        setTokenInfoError("Failed to load token data from Chaingraph")
+      const respJsonAuthchain = authchainResult.status === 'fulfilled' ? authchainResult.value : null
+      if (!respJsonAuthchain) {
+        const reason = authchainResult.status === 'rejected' ? authchainResult.reason : 'query returned null'
+        console.error("Error fetching authchain from Chaingraph:", reason)
+        setTokenInfoError("Failed to load core token data from Chaingraph")
         setIsLoadingTokenInfo(false)
         return
+      }
+
+      const respJsonGenesisSupply = genesisResult.status === 'fulfilled' ? genesisResult.value : null
+      const respJsonIssuingUtxos = issuingResult.status === 'fulfilled' ? issuingResult.value : null
+      const genesisInfoError = !respJsonGenesisSupply ? "Failed to load genesis info from Chaingraph" : undefined
+      const issuingUtxosError = !respJsonIssuingUtxos ? "Failed to load reserved supply data from Chaingraph" : undefined
+      if (genesisInfoError) {
+        console.error(genesisInfoError, genesisResult.status === 'rejected' ? genesisResult.reason : '(query returned null)')
+      }
+      if (issuingUtxosError) {
+        console.error(issuingUtxosError, issuingResult.status === 'rejected' ? issuingResult.reason : '(query returned null)')
       }
 
       // Check if the transaction exists on-chain (authchain query finds it by hash)
       const validTxId = respJsonAuthchain.transaction.length > 0
 
-      // Parse genesis supply
-      const genesisTransaction = respJsonGenesisSupply.transaction[0]
-      const genesisTx = genesisTransaction?.hash?.substring(2)
+      // Parse genesis supply (only if the query succeeded; fall back to tokenId for genesisTx)
+      const genesisTransaction = respJsonGenesisSupply?.transaction[0]
+      const genesisTx = genesisTransaction?.hash?.substring(2) ?? tokenId
       const blockTimestamp = genesisTransaction?.block_inclusions?.[0]?.block?.timestamp
       const genesisTxTimestamp = blockTimestamp ? Number(blockTimestamp) : undefined
       const nodeName = respJsonAuthchain.transaction[0]?.block_inclusions?.[0]?.block?.accepted_by?.[0]?.node?.name
@@ -292,14 +310,16 @@ export default function Home() {
         )
       }
 
-      // Parse reserved supply UTXOs (minting + mutable NFT UTXOs)
-      const reservedSupplyUtxos: ReservedSupplyUtxo[] = respJsonIssuingUtxos.output.map(o => ({
-        txHash: (o.transaction_hash as string).slice(2),
-        vout: Number(o.output_index),
-        lockingBytecode: (o.locking_bytecode as string).slice(2),
-        fungibleTokenAmount: BigInt(o.fungible_token_amount ?? "0"),
-        nftCapability: o.nonfungible_token_capability as 'minting' | 'mutable'
-      }))
+      // Parse reserved supply UTXOs (minting + mutable NFT UTXOs) — only if the query succeeded
+      const reservedSupplyUtxos: ReservedSupplyUtxo[] = respJsonIssuingUtxos
+        ? respJsonIssuingUtxos.output.map(o => ({
+            txHash: (o.transaction_hash as string).slice(2),
+            vout: Number(o.output_index),
+            lockingBytecode: (o.locking_bytecode as string).slice(2),
+            fungibleTokenAmount: BigInt(o.fungible_token_amount ?? "0"),
+            nftCapability: o.nonfungible_token_capability as 'minting' | 'mutable'
+          }))
+        : []
       const hasActiveMintingToken = reservedSupplyUtxos.some(utxo => utxo.nftCapability === "minting")
       const covenantReservedFT = reservedSupplyUtxos.reduce(
         (total: bigint, u) => total + u.fungibleTokenAmount, 0n
@@ -363,7 +383,8 @@ export default function Home() {
 
       // Phase 1: set initial tokenInfo from fast queries
       console.timeEnd('initialDataLoad')
-      const validTokenCategory = genesisSupplyFT > 0n || hasGenesisNFTs
+      // If genesis info is unavailable we can't determine FT/NFT presence; trust validTxId instead
+      const validTokenCategory = respJsonGenesisSupply ? (genesisSupplyFT > 0n || hasGenesisNFTs) : validTxId
 
       // If not a valid token category, check if this tx is a genesis tx for other categories
       let tokenCategoriesInTx: string[] | undefined
@@ -433,7 +454,9 @@ export default function Home() {
         authHeadBurned,
         usesAuthGuard,
         network,
-        authchainMigrations: filteredMigrations
+        authchainMigrations: filteredMigrations,
+        genesisInfoError,
+        issuingUtxosError
       })
     } catch (error) {
       console.error("Error in initial data load:", error)

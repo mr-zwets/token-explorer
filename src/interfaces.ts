@@ -43,6 +43,8 @@ export interface TokenInfo {
   validTxId: boolean
   validTokenCategory: boolean
   tokenCategoriesInTx?: string[]
+  genesisInfoError?: string
+  issuingUtxosError?: string
 }
 
 export interface ExtendedTokenInfo {
