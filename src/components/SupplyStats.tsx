@@ -91,7 +91,7 @@ function ElectrumVerificationBadge({ verification }: { verification: ElectrumVer
       {verification.missingCount > 0 && (
         <div>{verification.missingCount.toLocaleString("en-GB")} UTXO{verification.missingCount > 1 ? 's' : ''} found by Electrum but not in Chaingraph (not yet indexed)</div>
       )}
-      <div style={{ marginTop: '4px' }}>Advanced Chaingraph stats below may be inaccurate due to this stale data.</div>
+      <div style={{ marginTop: '4px' }}>Detailed supply stats below may be inaccurate due to this stale data.</div>
     </div>
   )
 }
@@ -207,8 +207,22 @@ export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metada
         </>
       )}
 
-      {!tokenInfo.issuingUtxosError && metadataInfo?.tokenMetadata && tokenInfo.genesisSupplyFT > 0n && (
-        <>
+      {!tokenInfo.issuingUtxosError && metadataInfo?.tokenMetadata && tokenInfo.genesisSupplyFT > 0n && (() => {
+        // Burned + circulating excl. burns come from the Chaingraph holder query (extendedInfo).
+        // Rendered between naive circulating and reserved supply in both branches below.
+        const burnedAndExclJsx = extendedInfo ? (() => {
+          const burned = tokenInfo.genesisSupplyFT - extendedInfo.totalSupplyFT
+          const advancedCirculating = extendedInfo.totalSupplyFT - tokenInfo.reservedSupplyFT
+          return (
+            <>
+              {burned > 0n && <>burned: {displayTokenAmount(burned)}<br /></>}
+              circulating supply excl. burns: {displayTokenAmount(advancedCirculating)}<br /><br />
+            </>
+          )
+        })() : null
+
+        return (
+          <>
           {/* Naive circulating supply: genesis - reserved (only shown with Electrum verification) */}
           {(() => {
             if (!electrumVerification) {
@@ -218,8 +232,9 @@ export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metada
             if (electrumVerification.error) {
               return tokenInfo.reservedSupplyFT ? (
                 <>
-                  circulating supply: {displayTokenAmount(tokenInfo.genesisSupplyFT - tokenInfo.reservedSupplyFT)}
+                  naive circulating supply: {displayTokenAmount(tokenInfo.genesisSupplyFT - tokenInfo.reservedSupplyFT)}
                   <br /><br />
+                  {burnedAndExclJsx}
                   reserved supply: {displayTokenAmount(tokenInfo.reservedSupplyFT)}
                   <span style={{ fontSize: '0.85em', color: '#666' }}> (unverified)</span>
                   <br /><br />
@@ -233,8 +248,9 @@ export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metada
 
             return reservedFT ? (
               <>
-                circulating supply: {displayTokenAmount(naiveCirculating)}
+                naive circulating supply: {displayTokenAmount(naiveCirculating)}
                 <br /><br />
+                {burnedAndExclJsx}
                 reserved supply: {displayTokenAmount(reservedFT)}
                 <br /><br />
                 {(() => {
@@ -272,13 +288,12 @@ export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metada
               <>No reserved supply (full supply circulating)<br /><br /></>
             )
           })()}
-          
-
-        </>
-      )}
+          </>
+        )
+      })()}
 
       <hr />
-      <div style={{ marginTop: '10px' }}><strong>Advanced ChainGraph Info</strong></div><br />
+      <div style={{ marginTop: '10px' }}><strong>Detailed supply info</strong></div><br />
 
       {extendedInfo && (
         electrumVerification ? (
@@ -288,25 +303,14 @@ export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metada
         )
       )}
 
-      {!tokenInfo.issuingUtxosError && extendedInfo && metadataInfo?.tokenMetadata && tokenInfo.genesisSupplyFT > 0n && (
-        <>
-          {(() => {
-            const burned = tokenInfo.genesisSupplyFT - extendedInfo.totalSupplyFT
-            const advancedCirculating = extendedInfo.totalSupplyFT - tokenInfo.reservedSupplyFT
-            return (
-              <>
-                reserved supply (Chaingraph): {displayTokenAmount(tokenInfo.reservedSupplyFT)}<br /><br />
-                {burned > 0n && (
-                  <>
-                    burned: {displayTokenAmount(burned)}<br />
-                  </>
-                )}
-                circulating supply excl. burns (Chaingraph): {displayTokenAmount(advancedCirculating)}<br /><br />
-              </>
-            )
-          })()}
-        </>
-      )}
+      {!tokenInfo.issuingUtxosError && extendedInfo && metadataInfo?.tokenMetadata && tokenInfo.genesisSupplyFT > 0n && (() => {
+        // Hide Chaingraph reserved supply when Electrum confirms the same value — already shown above.
+        const electrumMatches = !!electrumVerification && !electrumVerification.error && electrumVerification.electrumReservedFT === tokenInfo.reservedSupplyFT
+        if (electrumMatches) return null
+        return (
+          <>reserved supply (Chaingraph): {displayTokenAmount(tokenInfo.reservedSupplyFT)}<br /><br /></>
+        )
+      })()}
 
       {extendedInfo && extendedInfo.totalSupplyNFTs > 0 && (
         <>
