@@ -576,14 +576,15 @@ export default function Home() {
       <main className={styles.page}>
         <ThemeToggle />
         <header className={`${styles.hero} ${compact ? styles.heroCompact : ''}`}>
-          <a
-            href="/"
+          <button
+            type="button"
             className={styles.brand}
-            onClick={(e) => { e.preventDefault(); resetToHome() }}
+            onClick={resetToHome}
+            aria-label="Back to home"
           >
             <span className={styles.brandMark}>₿</span>
             <h1 className={`${styles.title} ${compact ? styles.titleCompact : ''}`}>CashToken Explorer</h1>
-          </a>
+          </button>
           {!compact && (
             <p className={styles.subtitle}>
               Explore CashTokens metadata, supply, holders and authchain on Bitcoin Cash.
