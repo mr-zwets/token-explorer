@@ -1,6 +1,8 @@
 import type { TokenInfo, MetadataInfo, AuthchainEntry, Diagnostic, ElectrumVerification } from '@/interfaces'
 import { formatTimestamp } from '@/utils/utils'
 import { BLOCK_EXPLORER_URL } from '@/constants'
+import styles from '@/styles/Home.module.css'
+import { Badge, SectionTitle, Row, Rows, CheckItem, HashLink } from './ui'
 
 interface AuthchainInfoProps {
   tokenInfo: TokenInfo
@@ -35,94 +37,51 @@ function AuthchainTimeline({ migrations, bcmrEntries, genesisTx, authHead, authH
   })
 
   return (
-    <details>
-      <summary style={{ cursor: 'pointer' }}>
-        authchain history ({entries.length} transaction{entries.length !== 1 ? 's' : ''})
+    <details className="disclosure">
+      <summary>
+        Authchain history ({entries.length} transaction{entries.length !== 1 ? 's' : ''})
       </summary>
-      <div style={{ marginTop: '8px', marginLeft: '8px' }}>
-        {entries.map((entry, index) => (
-          <div key={entry.txHash} style={{ marginBottom: '14px', paddingLeft: '8px', borderLeft: '2px solid #ccc', lineHeight: '1.6' }}>
-            <div>
-              <strong>#{index}</strong>{' '}
-              <span style={{
-                display: 'inline-block',
-                padding: '1px 6px',
-                fontSize: '0.85em',
-                borderRadius: '4px',
-                backgroundColor: entry.isMetadataUpdate ? '#d4edda' : '#fff3cd',
-                color: entry.isMetadataUpdate ? '#155724' : '#856404'
-              }}>
-                {entry.isMetadataUpdate ? 'metadata update' : 'identity transfer'}
-              </span>
-              {entry.txHash === genesisTx && (
-                <span style={{
-                  display: 'inline-block',
-                  padding: '1px 6px',
-                  fontSize: '0.85em',
-                  borderRadius: '4px',
-                  marginLeft: '4px',
-                  backgroundColor: '#cce5ff',
-                  color: '#004085'
-                }}>
-                  token genesis
-                </span>
+      <div className="disclosure-body">
+        <div style={{ marginTop: '10px' }}>
+          {entries.map((entry, index) => (
+            <div key={entry.txHash} className={styles.entry}>
+              <div className={styles.entryHead}>
+                <span className={styles.entryIndex}>#{index}</span>
+                <Badge tone={entry.isMetadataUpdate ? 'success' : 'warn'}>
+                  {entry.isMetadataUpdate ? 'metadata update' : 'identity transfer'}
+                </Badge>
+                {entry.txHash === genesisTx && <Badge tone="info">token genesis</Badge>}
+                {entry.txHash === authHead && <Badge tone="purple">authhead</Badge>}
+                {entry.txHash === authHead && authHeadBurned && <Badge tone="danger">burned</Badge>}
+              </div>
+              <div>
+                <span style={{ color: 'var(--text-muted)' }}>tx:</span>{' '}
+                <HashLink hash={entry.txHash} href={BLOCK_EXPLORER_URL + entry.txHash} truncate />
+              </div>
+              {entry.timestamp && (
+                <div style={{ color: 'var(--text-muted)' }}>{formatTimestamp(entry.timestamp)}</div>
               )}
-              {entry.txHash === authHead && (
-                <span style={{
-                  display: 'inline-block',
-                  padding: '1px 6px',
-                  fontSize: '0.85em',
-                  borderRadius: '4px',
-                  marginLeft: '4px',
-                  backgroundColor: '#e2d9f3',
-                  color: '#3d2b6b'
-                }}>
-                  authhead
-                </span>
-              )}
-              {entry.txHash === authHead && authHeadBurned && (
-                <span style={{
-                  display: 'inline-block',
-                  padding: '1px 6px',
-                  fontSize: '0.85em',
-                  borderRadius: '4px',
-                  marginLeft: '4px',
-                  backgroundColor: '#f8d7da',
-                  color: '#721c24'
-                }}>
-                  burned
-                </span>
+              {entry.isMetadataUpdate && (entry.contentHash || entry.uris) && (
+                <details className="disclosure-inline">
+                  <summary>BCMR details</summary>
+                  <div style={{ marginLeft: '8px', fontSize: '0.9em', marginTop: '4px' }}>
+                    {entry.contentHash && <div style={{ wordBreak: 'break-all' }}>content hash: <span className="mono">{entry.contentHash}</span></div>}
+                    {entry.httpsUrl && (
+                      <div>https url:{' '}
+                        <a href={entry.httpsUrl} target="_blank" rel="noreferrer" style={{ wordBreak: 'break-all' }}>
+                          {entry.httpsUrl}
+                        </a>
+                      </div>
+                    )}
+                    {entry.uris && entry.uris.length > 0 && (
+                      <div>uri{entry.uris.length > 1 ? 's' : ''}: {entry.uris.join(', ')}</div>
+                    )}
+                  </div>
+                </details>
               )}
             </div>
-            <div>
-              tx:{' '}
-              <a href={BLOCK_EXPLORER_URL + entry.txHash} target="_blank" rel="noreferrer" style={{ color: 'black', display: 'inline', textDecoration: 'none' }}>
-                {entry.txHash.substring(0, 16)}...{entry.txHash.substring(entry.txHash.length - 8)}
-              </a>
-            </div>
-            {entry.timestamp && (
-              <div>{formatTimestamp(entry.timestamp)}</div>
-            )}
-            {entry.isMetadataUpdate && (entry.contentHash || entry.uris) && (
-              <details style={{ marginTop: '4px' }}>
-                <summary style={{ cursor: 'pointer', fontSize: '0.9em' }}>BCMR details</summary>
-                <div style={{ marginLeft: '8px', fontSize: '0.9em' }}>
-                  {entry.contentHash && <div>content hash: {entry.contentHash}</div>}
-                  {entry.httpsUrl && (
-                    <div>https url:{' '}
-                      <a href={entry.httpsUrl} target="_blank" rel="noreferrer" style={{ wordBreak: 'break-all' }}>
-                        {entry.httpsUrl}
-                      </a>
-                    </div>
-                  )}
-                  {entry.uris && entry.uris.length > 0 && (
-                    <div>uri{entry.uris.length > 1 ? 's' : ''}: {entry.uris.join(', ')}</div>
-                  )}
-                </div>
-              </details>
-            )}
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </details>
   )
@@ -184,27 +143,29 @@ function LatestPublicationOutput({ migrations, lastMetadataUpdateTimestamp }: {
   return (
     <>
       {lastMetadataUpdateTimestamp && (
-        <div style={{ marginTop: '14px' }}>last metadata update: {formatTimestamp(lastMetadataUpdateTimestamp)}</div>
+        <Rows>
+          <Row label="Last metadata update">{formatTimestamp(lastMetadataUpdateTimestamp)}</Row>
+        </Rows>
       )}
-      <details style={{ marginTop: '14px' }}>
-        <summary style={{ cursor: 'pointer' }}>latest publication output</summary>
-        <div style={{ marginLeft: '8px', marginTop: '4px' }}>
-          <div style={{ marginTop: '4px' }}>
+      <details className="disclosure" style={{ marginTop: '14px' }}>
+        <summary>Latest publication output</summary>
+        <div className="disclosure-body">
+          <div style={{ marginTop: '10px' }}>
             <strong>raw hex:</strong>
-            <div style={{ fontFamily: 'monospace', fontSize: '0.85em', wordBreak: 'break-all', marginTop: '2px' }}>{rawHex}</div>
+            <div className="mono" style={{ wordBreak: 'break-all', marginTop: '2px' }}>{rawHex}</div>
           </div>
           {pushes.length > 0 && (
-            <div style={{ marginTop: '8px' }}>
+            <div style={{ marginTop: '10px' }}>
               <strong>data pushes:</strong>
               {pushes.map((push, i) => (
-                <div key={i} style={{ fontFamily: 'monospace', fontSize: '0.85em', wordBreak: 'break-all', marginTop: '2px' }}>
+                <div key={i} className="mono" style={{ wordBreak: 'break-all', marginTop: '2px' }}>
                   [{i}] {push}
                 </div>
               ))}
             </div>
           )}
           {pushes.length > 0 && (
-            <div style={{ marginTop: '8px' }}>
+            <div style={{ marginTop: '10px' }}>
               <strong>decoded:</strong>
               {pushes.map((push, i) => (
                 <div key={i} style={{ wordBreak: 'break-all', marginTop: '2px' }}>
@@ -215,7 +176,6 @@ function LatestPublicationOutput({ migrations, lastMetadataUpdateTimestamp }: {
           )}
         </div>
       </details>
-      <br />
     </>
   )
 }
@@ -223,35 +183,29 @@ function LatestPublicationOutput({ migrations, lastMetadataUpdateTimestamp }: {
 function DiagnosticsSection({ diagnostics }: { diagnostics?: Diagnostic[] }) {
   if (!diagnostics || diagnostics.length === 0) return null
   return (
-    <details style={{ marginBottom: '8px' }}>
-      <summary style={{ cursor: 'pointer' }}>
-        diagnostics ({diagnostics.length} issue{diagnostics.length !== 1 ? 's' : ''})
+    <details className="disclosure" style={{ marginTop: '14px', borderColor: 'var(--warn-border)' }}>
+      <summary style={{ color: 'var(--warn-text)' }}>
+        Diagnostics ({diagnostics.length} issue{diagnostics.length !== 1 ? 's' : ''})
       </summary>
-      <div style={{ marginTop: '8px', marginLeft: '8px' }}>
-        {diagnostics.map((diag, i) => (
-          <div key={i} style={{
-            marginBottom: '8px',
-            padding: '8px',
-            borderRadius: '4px',
-            backgroundColor: '#fff3cd',
-            color: '#856404'
-          }}>
-            <div><strong>{diagnosticLabels[diag.type] ?? diag.type}</strong></div>
-            <div style={{ marginTop: '2px' }}>{diag.message}</div>
-            {diag.details && (
-              <pre style={{
-                marginTop: '4px',
-                fontSize: '0.85em',
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-all',
-                fontFamily: 'monospace',
-                backgroundColor: 'rgba(0,0,0,0.05)',
-                padding: '4px',
-                borderRadius: '2px'
-              }}>{diag.details}</pre>
-            )}
-          </div>
-        ))}
+      <div className="disclosure-body">
+        <div style={{ marginTop: '10px' }}>
+          {diagnostics.map((diag, i) => (
+            <div key={i} className="note note-warn" style={{ marginBottom: '8px' }}>
+              <div><strong>{diagnosticLabels[diag.type] ?? diag.type}</strong></div>
+              <div style={{ marginTop: '2px' }}>{diag.message}</div>
+              {diag.details && (
+                <pre className="mono" style={{
+                  marginTop: '6px',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-all',
+                  backgroundColor: 'var(--bg-accent)',
+                  padding: '6px 8px',
+                  borderRadius: '4px'
+                }}>{diag.details}</pre>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
     </details>
   )
@@ -263,117 +217,113 @@ export function AuthchainInfo({ tokenInfo, metadataInfo, electrumVerification }:
   const webBaseDomain = webUrl ? getBaseDomain(webUrl) : undefined
   const bcmrOriginMatchesWeb = bcmrBaseDomain && webBaseDomain ? bcmrBaseDomain === webBaseDomain : undefined
 
-  return (
-    <>
-      <hr />
-      <div style={{ marginTop: '10px' }}><strong>Authchain Info</strong></div><br />
+  const hasChecks = metadataInfo && (
+    metadataInfo.isSchemaValid !== undefined ||
+    (metadataInfo.authchainUpdates !== undefined && metadataInfo.authchainUpdates > 0) ||
+    bcmrOriginMatchesWeb ||
+    metadataInfo.isOtrVerified ||
+    tokenInfo.usesAuthGuard
+  )
 
-      genesis transaction: {' '}
-      <a href={BLOCK_EXPLORER_URL + tokenInfo.genesisTx} target="_blank" rel="noreferrer" style={{ color: "black" }}>
-        {tokenInfo.genesisTx}
-      </a><br />
-      timestamp genesis transaction: {tokenInfo.genesisTxTimestamp ? formatTimestamp(tokenInfo.genesisTxTimestamp) : "N/A"} <br /><br />
+  return (
+    <div className={`card ${styles.section}`}>
+      <SectionTitle>Authchain &amp; metadata</SectionTitle>
+
+      <Rows>
+        <Row label="Genesis transaction">
+          <HashLink hash={tokenInfo.genesisTx} href={BLOCK_EXPLORER_URL + tokenInfo.genesisTx} />
+        </Row>
+        <Row label="Genesis timestamp">
+          {tokenInfo.genesisTxTimestamp ? formatTimestamp(tokenInfo.genesisTxTimestamp) : 'N/A'}
+        </Row>
+
+        {metadataInfo && (
+          <>
+            <Row label="Authchain length">{tokenInfo.authchainLength}</Row>
+            <Row label="Metadata updates">{metadataInfo.authchainUpdates}</Row>
+            <Row label="AuthHead txid">
+              <HashLink hash={tokenInfo.authHead ?? ''} href={BLOCK_EXPLORER_URL + tokenInfo.authHead} />
+              {tokenInfo.authHeadBurned && (
+                <div style={{ marginTop: '4px' }}><Badge tone="danger">burned — identity output is OP_RETURN (unspendable)</Badge></div>
+              )}
+              {!tokenInfo.authHeadBurned && electrumVerification?.authHeadUnspent === true && (
+                <div className="note note-success" style={{ marginTop: '8px' }}>authhead UTXO confirmed unspent via Electrum</div>
+              )}
+              {!tokenInfo.authHeadBurned && electrumVerification?.authHeadUnspent === false && (
+                <div className="note note-warn" style={{ marginTop: '8px' }}>authhead UTXO not found via Electrum — may be spent (Chaingraph stale)</div>
+              )}
+            </Row>
+            {tokenInfo.authHeadTimestamp && (
+              <Row label="Last authchain update">
+                {formatTimestamp(tokenInfo.authHeadTimestamp)}{' '}
+                <span style={{ color: 'var(--text-muted)' }}>
+                  ({tokenInfo.authHeadIsMetadataUpdate ? 'metadata update' : 'identity transfer'})
+                </span>
+              </Row>
+            )}
+            {tokenInfo.authHeadAddress && (
+              <Row label="AuthHead address"><span className="mono">{tokenInfo.authHeadAddress}</span></Row>
+            )}
+            {metadataInfo.httpsUrl && (
+              <Row label="Metadata location">
+                <a href={metadataInfo.httpsUrl} target="_blank" rel="noreferrer" style={{ wordBreak: 'break-all' }}>
+                  {metadataInfo.metaDataLocation}
+                </a>
+              </Row>
+            )}
+          </>
+        )}
+      </Rows>
 
       {metadataInfo && (
         <>
-          authChain length: {tokenInfo.authchainLength} <br /><br />
-          authChain metadata updates: {metadataInfo.authchainUpdates} <br /><br />
+          <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <LatestPublicationOutput
+              migrations={tokenInfo.authchainMigrations}
+              lastMetadataUpdateTimestamp={
+                !tokenInfo.authHeadIsMetadataUpdate
+                  ? [...(tokenInfo.authchainMigrations ?? [])].reverse().find(m => m.isMetadataUpdate)?.timestamp
+                  : undefined
+              }
+            />
 
-          authHead txid: {' '}
-          <a href={BLOCK_EXPLORER_URL + tokenInfo.authHead} target="_blank" rel="noreferrer" style={{ color: "black" }}>
-            {tokenInfo.authHead}
-          </a>
-          {tokenInfo.authHeadBurned && (
-            <><br />authhead burned (identity output is OP_RETURN and hence unspendable)</>
-          )}
-          {!tokenInfo.authHeadBurned && electrumVerification?.authHeadUnspent === true && (
-            <div style={{ padding: '6px 10px', marginTop: '16px', backgroundColor: '#d4edda', border: '1px solid #28a745', borderRadius: '6px', fontSize: '0.85em', color: '#155724' }}>
-              authhead UTXO confirmed unspent via Electrum
+            <AuthchainTimeline
+              migrations={tokenInfo.authchainMigrations}
+              bcmrEntries={metadataInfo.authchainHistory}
+              genesisTx={tokenInfo.genesisTx}
+              authHead={tokenInfo.authHead}
+              authHeadBurned={tokenInfo.authHeadBurned}
+            />
+          </div>
+
+          {hasChecks && (
+            <div style={{ marginTop: '20px' }}>
+              <SectionTitle>Verification</SectionTitle>
+              <div className={styles.checklist}>
+                {metadataInfo.isSchemaValid !== undefined && (
+                  <CheckItem state={metadataInfo.isSchemaValid ? 'pass' : 'fail'}>BCMR schema valid</CheckItem>
+                )}
+                {metadataInfo.authchainUpdates !== undefined && metadataInfo.authchainUpdates > 0 && (
+                  <CheckItem state={metadataInfo.metadataHashMatch ? 'pass' : metadataInfo.metadataHashMatch === false ? 'fail' : 'unknown'}>
+                    Metadata hash matches on-chain commitment
+                  </CheckItem>
+                )}
+                {bcmrOriginMatchesWeb && (
+                  <CheckItem state="pass">BCMR origin matches web URL</CheckItem>
+                )}
+                {metadataInfo.isOtrVerified && (
+                  <CheckItem state="pass">OpenTokenRegistry (OTR) verified</CheckItem>
+                )}
+                {tokenInfo.usesAuthGuard && (
+                  <CheckItem state="pass">Uses authGuard standard</CheckItem>
+                )}
+              </div>
             </div>
-          )}
-          {!tokenInfo.authHeadBurned && electrumVerification?.authHeadUnspent === false && (
-            <div style={{ padding: '6px 10px', marginTop: '16px', backgroundColor: '#fff3cd', border: '1px solid #ffc107', borderRadius: '6px', fontSize: '0.85em', color: '#856404' }}>
-              authhead UTXO not found via Electrum — may be spent (Chaingraph stale)
-            </div>
-          )}
-          <br />
-
-          {tokenInfo.authHeadTimestamp && (
-            <>
-              last authChain update: {formatTimestamp(tokenInfo.authHeadTimestamp)}
-              {tokenInfo.authHeadIsMetadataUpdate ? ' (metadata update)' : ' (identity transfer)'}
-              <br />
-            </>
-          )}
-
-          <LatestPublicationOutput
-            migrations={tokenInfo.authchainMigrations}
-            lastMetadataUpdateTimestamp={
-              !tokenInfo.authHeadIsMetadataUpdate
-                ? [...(tokenInfo.authchainMigrations ?? [])].reverse().find(m => m.isMetadataUpdate)?.timestamp
-                : undefined
-            }
-          />
-
-          <AuthchainTimeline
-            migrations={tokenInfo.authchainMigrations}
-            bcmrEntries={metadataInfo.authchainHistory}
-            genesisTx={tokenInfo.genesisTx}
-            authHead={tokenInfo.authHead}
-            authHeadBurned={tokenInfo.authHeadBurned}
-          />
-          <br />
-
-          {tokenInfo.authHeadAddress && (
-            <>authHead address: {tokenInfo.authHeadAddress}<br /></>
-          )}
-
-          {tokenInfo.usesAuthGuard && (
-            <div style={{ marginTop: '14px' }}>uses authGuard standard: ✅</div>
-          )}
-          <br />
-
-          {metadataInfo.httpsUrl && (
-            <>
-              location metadata: {' '}
-              <a
-                href={metadataInfo.httpsUrl}
-                target="_blank"
-                rel="noreferrer"
-                style={{ maxWidth: "570px", wordBreak: "break-all", display: "inline-block" }}
-              >
-                {metadataInfo.metaDataLocation}
-              </a><br /><br />
-            </>
-          )}
-
-          {metadataInfo.isSchemaValid !== undefined && (
-            <>
-              BCMR schema valid: {metadataInfo.isSchemaValid ? '✅' : '❌'}<br /><br />
-            </>
-          )}
-
-          {metadataInfo.authchainUpdates !== undefined && metadataInfo.authchainUpdates > 0 && (
-            <>
-              metadata hash matches: {metadataInfo.metadataHashMatch ? "✅" : metadataInfo.metadataHashMatch === false ? "❌" : "❔"} <br /><br />
-            </>
-          )}
-
-          {bcmrOriginMatchesWeb && (
-            <>
-              BCMR origin matches web url: ✅<br /><br />
-            </>
-          )}
-
-          {metadataInfo.isOtrVerified && (
-            <>
-              OpenTokenRegistry (OTR) verified: ✅<br /><br />
-            </>
           )}
 
           <DiagnosticsSection diagnostics={metadataInfo.diagnostics} />
         </>
       )}
-    </>
+    </div>
   )
 }

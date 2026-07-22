@@ -8,9 +8,9 @@ import { countUniqueHolders, calculateTotalSupplyFT } from '../utils/calculation
 import { checkOtrVerified } from '../utils/otrRegistry'
 import { IdentitySnapshotSchema } from '../utils/bcmrSchema'
 import type { TokenInfo, ExtendedTokenInfo, MetadataInfo, TokenMetadata, AuthchainEntry, Diagnostic, ReservedSupplyUtxo, ElectrumVerification } from '@/interfaces'
-import { CHAINGRAPH_URL, IPFS_GATEWAY } from '@/constants'
+import { CHAINGRAPH_URL, IPFS_GATEWAY, EXAMPLE_TOKENS } from '@/constants'
 import { verifySupplyViaElectrum } from '@/utils/queryElectrum'
-import { TokenSearch, MetadataDisplay, SupplyStats, AuthchainInfo } from '@/components'
+import { TokenSearch, MetadataDisplay, SupplyStats, AuthchainInfo, ThemeToggle } from '@/components'
 
 export default function Home() {
   const [tokenId, setTokenId] = useState<string>("")
@@ -71,6 +71,19 @@ export default function Home() {
     const params = new URLSearchParams(window.location.search)
     params.set("tokenId", id)
     window.history.replaceState({}, "", `${location.pathname}?${params}`)
+  }
+
+  function resetToHome() {
+    setTokenId("")
+    setTokenInfo(undefined)
+    setTokenInfoError(undefined)
+    setExtendedTokenInfo(undefined)
+    setExtendedTokenInfoError(undefined)
+    setMetadataInfo(undefined)
+    setTokenIconUri("")
+    setElectrumVerification(undefined)
+    setIsLoadingTokenInfo(false)
+    window.history.replaceState({}, "", location.pathname)
   }
 
   async function checkOtrStatus(tokenId: string) {
@@ -540,17 +553,42 @@ export default function Home() {
     }
   }
 
+  const getTokenType = () => {
+    if (!tokenInfo) return ''
+    if (tokenInfo.genesisSupplyFT && !tokenInfo.hasGenesisNFTs) return 'Fungible Token'
+    if (!tokenInfo.genesisSupplyFT && tokenInfo.hasGenesisNFTs) return 'NFT collection'
+    if (tokenInfo.genesisSupplyFT && tokenInfo.hasGenesisNFTs) return 'Fungible + Non-Fungible'
+    return 'CashToken'
+  }
+
+  const showResults = tokenInfo && tokenInfo.validTokenCategory
+  const compact = !!tokenInfo || isLoadingTokenInfo
+
   return (
     <>
       <Head>
-        <title>Token Explorer</title>
-        <meta name="description" content="Token explorer for CashTokens" />
+        <title>CashToken Explorer</title>
+        <meta name="description" content="Explore CashTokens metadata, supply, holders and authchain on Bitcoin Cash" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/favicon.ico" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
       </Head>
-      <main className={styles.main}>
-        <h1 className={styles.title}>BCMR Token Explorer</h1>
-        <div style={{ display: "block" }}>
+      <main className={styles.page}>
+        <ThemeToggle />
+        <header className={`${styles.hero} ${compact ? styles.heroCompact : ''}`}>
+          <a
+            href="/"
+            className={styles.brand}
+            onClick={(e) => { e.preventDefault(); resetToHome() }}
+          >
+            <span className={styles.brandMark}>₿</span>
+            <h1 className={`${styles.title} ${compact ? styles.titleCompact : ''}`}>CashToken Explorer</h1>
+          </a>
+          {!compact && (
+            <p className={styles.subtitle}>
+              Explore CashTokens metadata, supply, holders and authchain on Bitcoin Cash.
+            </p>
+          )}
           <TokenSearch
             tokenId={tokenId}
             isLoading={isLoadingTokenInfo}
@@ -558,110 +596,117 @@ export default function Home() {
             onTokenIdChange={setTokenId}
             onSearch={() => searchToken(tokenId)}
           />
-
-          {tokenInfoError && (
-            <div style={{ marginTop: "20px", overflowWrap: "anywhere", maxWidth: "570px" }}>
-              <div className={styles.description}>
-                <div style={{ padding: "12px 16px", backgroundColor: "#fdecea", border: "1px solid #d9534f", borderRadius: "6px", color: "#1a1a1a" }}>
-                  {tokenInfoError}
+          {!compact && (
+            <>
+              <div className={styles.searchHint}>
+                Paste a Token ID (Category ID) to look it up — or try an example below.
+              </div>
+              <div className={styles.examples}>
+                <div className={styles.examplesLabel}>Example tokens</div>
+                <div className={styles.exampleList}>
+                  {EXAMPLE_TOKENS.map(example => (
+                    <button
+                      key={example.id}
+                      className={styles.exampleItem}
+                      onClick={() => searchToken(example.id)}
+                    >
+                      <span className={styles.exampleName}>{example.name}</span>
+                      <span className={styles.exampleId}>{example.id}</span>
+                      <svg className={styles.exampleArrow} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                        <polyline points="12 5 19 12 12 19" />
+                      </svg>
+                    </button>
+                  ))}
                 </div>
               </div>
-            </div>
+            </>
+          )}
+        </header>
+
+        <div className={styles.content}>
+          {tokenInfoError && (
+            <div className="note note-danger">{tokenInfoError}</div>
           )}
 
           {tokenInfo && !tokenInfo.validTxId && (
-            <div style={{ marginTop: "20px", overflowWrap: "anywhere", maxWidth: "570px" }}>
-              <div className={styles.description}>
-                <div style={{ padding: "12px 16px", backgroundColor: "#e8f4fd", border: "1px solid #7ab8d9", borderRadius: "6px", color: "#1a1a1a" }}>
-                  This is not a valid CashTokens tokenId. No transaction with this hash was found on the blockchain.
-                </div>
-              </div>
+            <div className="note note-info">
+              This is not a valid CashTokens tokenId. No transaction with this hash was found on the blockchain.
             </div>
           )}
 
           {tokenInfo && tokenInfo.validTxId && tokenInfo.validTokenCategory === false && (
-            <div style={{ marginTop: "20px", overflowWrap: "anywhere", maxWidth: "570px" }}>
-              <div className={styles.description}>
-                <div style={{ padding: "12px 16px", backgroundColor: "#e8f4fd", border: "1px solid #7ab8d9", borderRadius: "6px", color: "#1a1a1a" }}>
-                  This is not a valid CashTokens tokenId. The transaction exists on-chain but no tokens were created with this ID.
-                  {tokenInfo.tokenCategoriesInTx && tokenInfo.tokenCategoriesInTx.length > 0 && (
-                    <div style={{ marginTop: "8px" }}>
-                      This is a genesis transaction for the following tokenId{tokenInfo.tokenCategoriesInTx.length > 1 ? 's' : ''}:
-                      {tokenInfo.tokenCategoriesInTx.map(cat => (
-                        <div key={cat} style={{ marginTop: "4px" }}>
-                          <a
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              searchToken(cat)
-                            }}
-                            style={{ textDecoration: "none", wordBreak: "break-all" }}
-                          >
-                            {cat}
-                          </a>
-                        </div>
-                      ))}
+            <div className="note note-info">
+              This is not a valid CashTokens tokenId. The transaction exists on-chain but no tokens were created with this ID.
+              {tokenInfo.tokenCategoriesInTx && tokenInfo.tokenCategoriesInTx.length > 0 && (
+                <div style={{ marginTop: "8px" }}>
+                  This is a genesis transaction for the following tokenId{tokenInfo.tokenCategoriesInTx.length > 1 ? 's' : ''}:
+                  {tokenInfo.tokenCategoriesInTx.map(cat => (
+                    <div key={cat} style={{ marginTop: "4px" }}>
+                      <a
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          searchToken(cat)
+                        }}
+                        className="mono"
+                        style={{ wordBreak: "break-all" }}
+                      >
+                        {cat}
+                      </a>
                     </div>
-                  )}
+                  ))}
                 </div>
-              </div>
+              )}
             </div>
           )}
 
-          {tokenInfo && tokenInfo.validTokenCategory && (
-            <div style={{ marginTop: "20px", overflowWrap: "anywhere", maxWidth: "570px" }}>
-              <div className={styles.description}>
-                {tokenInfo.network === 'chipnet' && (
-                  <div style={{ marginBottom: "10px" }}>
-                    Network: chipnet
-                  </div>
-                )}
-                <MetadataDisplay
-                  metadataInfo={metadataInfo}
-                  tokenIconUri={tokenIconUri}
-                />
-                <SupplyStats
-                  tokenInfo={tokenInfo}
-                  extendedInfo={extendedTokenInfo}
-                  extendedInfoError={extendedTokenInfoError}
-                  metadataInfo={metadataInfo}
-                  electrumVerification={electrumVerification}
-                />
-                <AuthchainInfo
-                  tokenInfo={tokenInfo}
-                  metadataInfo={metadataInfo}
-                  electrumVerification={electrumVerification}
-                />
-                {tokenInfo.network === 'mainnet' && (
-                  <div>
-                    <hr />
-                    <div style={{ marginTop: "10px" }}>Cross-check with{" "}
-                    <a
-                      href={`https://explorer.salemkode.com/token/${tokenId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ display: "inline", textDecoration: "none" }}
-                    >
-                      SalemKode explorer&apos;s token page
-                    </a>
-                    </div>
-                  </div>
-                )}
-                <div style={{ marginTop: "10px" }}>
-                  Paytaca BCMR indexer ({tokenInfo.network}):{" "}
-                  <a
-                    href={`https://${tokenInfo.network === 'chipnet' ? 'bcmr-chipnet' : 'bcmr'}.paytaca.com/api/tokens/${tokenId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ display: "inline", textDecoration: "none" }}
-                  >
-                    view /tokens endpoint
-                  </a>
-                </div>
-              </div>
-            </div>
+          {showResults && (
+            <>
+              <MetadataDisplay
+                metadataInfo={metadataInfo}
+                tokenIconUri={tokenIconUri}
+                tokenType={getTokenType()}
+                network={tokenInfo.network}
+              />
+              <SupplyStats
+                tokenInfo={tokenInfo}
+                extendedInfo={extendedTokenInfo}
+                extendedInfoError={extendedTokenInfoError}
+                metadataInfo={metadataInfo}
+                electrumVerification={electrumVerification}
+              />
+              <AuthchainInfo
+                tokenInfo={tokenInfo}
+                metadataInfo={metadataInfo}
+                electrumVerification={electrumVerification}
+              />
+            </>
           )}
         </div>
+
+        {showResults && (
+          <div className={styles.footerLinks}>
+            {tokenInfo.network === 'mainnet' && (
+              <span>
+                Cross-check with{" "}
+                <a href={`https://explorer.salemkode.com/token/${tokenId}`} target="_blank" rel="noopener noreferrer">
+                  SalemKode explorer
+                </a>
+              </span>
+            )}
+            <span>
+              Paytaca BCMR indexer ({tokenInfo.network}):{" "}
+              <a
+                href={`https://${tokenInfo.network === 'chipnet' ? 'bcmr-chipnet' : 'bcmr'}.paytaca.com/api/tokens/${tokenId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                /tokens endpoint
+              </a>
+            </span>
+          </div>
+        )}
       </main>
     </>
   )

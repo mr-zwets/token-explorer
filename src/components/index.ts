@@ -1,4 +1,5 @@
 export { TokenSearch } from './TokenSearch'
+export { ThemeToggle } from './ThemeToggle'
 export { MetadataDisplay } from './MetadataDisplay'
 export { SupplyStats } from './SupplyStats'
 export { AuthchainInfo } from './AuthchainInfo'

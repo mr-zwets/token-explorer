@@ -32,22 +32,37 @@ export function TokenSearch({
   }
 
   return (
-    <>
-      <h2 className={styles.description}>Enter tokenId: </h2>
-      <input
-        className={styles.description}
-        style={{ width: "80vw", maxWidth: "570px", padding: "10px 20px" }}
-        type="text"
-        id="tokenId"
-        value={tokenId}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-      />
+    <div className={styles.searchWrap}>
+      <div className={styles.searchBar}>
+        <input
+          className={styles.searchInput}
+          type="text"
+          id="tokenId"
+          placeholder="Enter a Token ID (Category ID)…"
+          value={tokenId}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          spellCheck={false}
+          autoComplete="off"
+        />
+        <button
+          className={styles.searchButton}
+          onClick={onSearch}
+          disabled={isLoading && !hasTokenInfo}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <span>Explore</span>
+        </button>
+      </div>
       {isLoading && !hasTokenInfo && (
-        <div className={styles.description} style={{ marginTop: "20px" }}>
-          loading token info...
+        <div className={styles.inlineLoading}>
+          <span className={styles.spinner} />
+          Loading token info…
         </div>
       )}
-    </>
+    </div>
   )
 }

@@ -1,89 +1,97 @@
 import type { MetadataInfo } from '@/interfaces'
+import styles from '@/styles/Home.module.css'
+import { Badge } from './ui'
 
 interface MetadataDisplayProps {
   metadataInfo: MetadataInfo | undefined
   tokenIconUri: string
+  tokenType: string
+  network: 'mainnet' | 'chipnet'
 }
 
-export function MetadataDisplay({ metadataInfo, tokenIconUri }: MetadataDisplayProps) {
-  if (metadataInfo?.metaDataLocation !== undefined) {
-    if (metadataInfo.metaDataLocation === "") {
-      return <> This token has no BCMR metadata linked on-chain <br /><br /></>
-    }
-  } else {
-    return <> loading metadata... <br /><br /></>
-  }
+function GlobeIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18" />
+    </svg>
+  )
+}
 
+function LinkIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1" />
+      <path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1" />
+    </svg>
+  )
+}
+
+export function MetadataDisplay({ metadataInfo, tokenIconUri, tokenType, network }: MetadataDisplayProps) {
+  const loadingMetadata = metadataInfo?.metaDataLocation === undefined
+  const noMetadata = metadataInfo?.metaDataLocation === ""
   const tokenMetadata = metadataInfo?.tokenMetadata
-  if (!tokenMetadata) return null
 
-  const otherUriKeys = tokenMetadata.uris
+  const otherUriKeys = tokenMetadata?.uris
     ? Object.keys(tokenMetadata.uris).filter(uri => uri !== "icon" && uri !== "image" && uri !== "web")
     : []
 
+  const hasIcon = (tokenMetadata?.uris?.icon || tokenMetadata?.uris?.image) && tokenIconUri
+
   return (
-    <>
-      name: {tokenMetadata.name} <br /><br />
-
-      {tokenMetadata.token && (
-        <>
-          <div>symbol: {tokenMetadata.token.symbol}</div><br />
-        </>
-      )}
-
-      {tokenMetadata.token?.decimals !== undefined && (
-        <>
-          <div>decimals: {tokenMetadata.token.decimals}</div><br />
-        </>
-      )}
-
-      description: {tokenMetadata.description} <br /><br />
-
-      {tokenMetadata.uris && (
-        <>
-          web url: {tokenMetadata.uris.web ? (
-            <a
-              href={tokenMetadata.uris.web}
-              target='_blank'
-              rel="noreferrer"
-              style={{ display: "inline-block" }}
-            >
-              {tokenMetadata.uris.web}
-            </a>
-          ) : "none"}<br /><br />
-
-          other uris: {otherUriKeys.length ? (
-            otherUriKeys.map((uriKey, index, array) => (
-              <span key={uriKey}>
-                <a
-                  href={tokenMetadata.uris?.[uriKey]}
-                  target='_blank'
-                  rel="noreferrer"
-                  style={{ display: "inline-block" }}
-                >
-                  {uriKey}
-                </a>
-                {index !== array.length - 1 ? ", " : null}
-              </span>
-            ))
-          ) : "none"} <br /><br />
-        </>
-      )}
-
-      {(tokenMetadata.uris?.icon || tokenMetadata.uris?.image) && tokenIconUri && (
-        <>
-          <span style={{ verticalAlign: "top" }}>icon: </span>
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: "20px" }}>
-            <img
-              className='tokenImage'
-              style={{ width: "60vw", maxWidth: "400px" }}
-              src={tokenIconUri}
-              alt="tokenIcon"
-            />
+    <div className={`card ${styles.section}`}>
+      <div className={styles.tokenHeader}>
+        {hasIcon ? (
+          <img className="tokenImage" src={tokenIconUri} alt={tokenMetadata?.name ?? 'token icon'} />
+        ) : (
+          <div className="tokenImage" style={{ aspectRatio: '1 / 1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '2rem', fontWeight: 700 }}>
+            {(tokenMetadata?.name ?? '?').charAt(0).toUpperCase()}
           </div>
-        </>
-      )}
+        )}
 
-    </>
+        <div className={styles.tokenHeaderMain}>
+          <div className={styles.tokenName}>
+            {tokenMetadata?.name ?? (loadingMetadata ? 'Loading…' : 'Untitled token')}
+            {tokenMetadata?.token?.symbol && (
+              <span className={styles.tokenSymbol}>{tokenMetadata.token.symbol}</span>
+            )}
+          </div>
+
+          <div className={styles.chipRow}>
+            <Badge tone="info">{tokenType}</Badge>
+            {network === 'chipnet' && <Badge tone="warn">chipnet</Badge>}
+            {tokenMetadata?.token?.decimals !== undefined && (
+              <Badge tone="neutral">{tokenMetadata.token.decimals} decimals</Badge>
+            )}
+            {metadataInfo?.isOtrVerified && <Badge tone="success">OTR verified</Badge>}
+          </div>
+
+          {loadingMetadata && (
+            <div className={styles.tokenDescription}>Loading metadata…</div>
+          )}
+          {noMetadata && (
+            <div className={styles.tokenDescription}>This token has no BCMR metadata linked on-chain.</div>
+          )}
+          {tokenMetadata?.description && (
+            <div className={styles.tokenDescription}>{tokenMetadata.description}</div>
+          )}
+
+          {tokenMetadata?.uris && (tokenMetadata.uris.web || otherUriKeys.length > 0) && (
+            <div className={styles.chipRow}>
+              {tokenMetadata.uris.web && (
+                <a className={styles.chip} href={tokenMetadata.uris.web} target="_blank" rel="noreferrer">
+                  <GlobeIcon /> Website
+                </a>
+              )}
+              {otherUriKeys.map(uriKey => (
+                <a className={styles.chip} key={uriKey} href={tokenMetadata.uris?.[uriKey]} target="_blank" rel="noreferrer">
+                  <LinkIcon /> {uriKey}
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }

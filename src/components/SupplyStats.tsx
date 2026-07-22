@@ -1,5 +1,7 @@
 import type { TokenInfo, ExtendedTokenInfo, MetadataInfo, NftCategory, ElectrumVerification, ReservedSupplyUtxo } from '@/interfaces'
 import { lockingBytecodeToCashAddress, hexToBin } from '@bitauth/libauth'
+import styles from '@/styles/Home.module.css'
+import { Badge, SectionTitle, Stat, StatGrid, Row, Rows } from './ui'
 
 interface SupplyStatsProps {
   tokenInfo: TokenInfo
@@ -16,47 +18,48 @@ function NftParseDetails({ nfts }: { nfts: NftCategory }) {
 
   const isSequential = !nfts.parse.bytecode
   const summaryLabel = isSequential
-    ? `sequential NFT collection (${typeEntries.length} NFT entr${typeEntries.length > 1 ? 'ies' : 'y'} defined)`
-    : `parsable BCMR metadata (${typeEntries.length} NFT type${typeEntries.length > 1 ? 's' : ''} defined)`
+    ? `Sequential NFT collection (${typeEntries.length} NFT entr${typeEntries.length > 1 ? 'ies' : 'y'} defined)`
+    : `Parsable BCMR metadata (${typeEntries.length} NFT type${typeEntries.length > 1 ? 's' : ''} defined)`
 
   return (
-    <details>
+    <details className="disclosure">
       <summary>{summaryLabel}</summary>
-      <div style={{ paddingLeft: '1em', marginTop: '0.5em' }}>
-        {nfts.description && <div>collection description: {nfts.description}<br /><br /></div>}
-        {nfts.parse.bytecode && <div>parse bytecode: {nfts.parse.bytecode}<br /><br /></div>}
+      <div className="disclosure-body">
+        {nfts.description && <div style={{ marginTop: '10px' }}>collection description: {nfts.description}</div>}
+        {nfts.parse.bytecode && <div style={{ marginTop: '10px', wordBreak: 'break-all' }}>parse bytecode: {nfts.parse.bytecode}</div>}
         {nfts.fields && Object.keys(nfts.fields).length > 0 && (
-          <div>
-            fields:<br />
+          <div style={{ marginTop: '10px' }}>
+            fields:
             {Object.entries(nfts.fields).map(([fieldId, field]) => (
               <div key={fieldId} style={{ paddingLeft: '1em' }}>
                 - {field.name ?? fieldId} ({field.encoding.type}){field.description ? `: ${field.description}` : ''}
               </div>
             ))}
-            <br />
           </div>
         )}
-        {typeEntries.map(([typeId, nftType]) => (
-          <details key={typeId} style={{ marginBottom: '0.5em' }}>
-            <summary>{isSequential ? `#${typeId}` : `type "${typeId}"`}: {nftType.name}</summary>
-            <div style={{ paddingLeft: '1em', marginTop: '0.3em' }}>
-              {nftType.description && <div>description: {nftType.description}</div>}
-              {nftType.fields && nftType.fields.length > 0 && (
-                <div>fields: {nftType.fields.join(', ')}</div>
-              )}
-              {nftType.uris && Object.keys(nftType.uris).length > 0 && (
-                <div>
-                  uris: {Object.entries(nftType.uris).map(([key, val]) => (
-                    <span key={key}> {key}: {val}</span>
-                  ))}
-                </div>
-              )}
-              {nftType.extensions && Object.keys(nftType.extensions).length > 0 && (
-                <div>extensions: {JSON.stringify(nftType.extensions)}</div>
-              )}
-            </div>
-          </details>
-        ))}
+        <div style={{ marginTop: '10px' }}>
+          {typeEntries.map(([typeId, nftType]) => (
+            <details key={typeId} className="disclosure-inline">
+              <summary>{isSequential ? `#${typeId}` : `type "${typeId}"`}: {nftType.name}</summary>
+              <div style={{ paddingLeft: '1.2em', marginTop: '4px' }}>
+                {nftType.description && <div>description: {nftType.description}</div>}
+                {nftType.fields && nftType.fields.length > 0 && (
+                  <div>fields: {nftType.fields.join(', ')}</div>
+                )}
+                {nftType.uris && Object.keys(nftType.uris).length > 0 && (
+                  <div>
+                    uris: {Object.entries(nftType.uris).map(([key, val]) => (
+                      <span key={key}> {key}: {val}</span>
+                    ))}
+                  </div>
+                )}
+                {nftType.extensions && Object.keys(nftType.extensions).length > 0 && (
+                  <div>extensions: {JSON.stringify(nftType.extensions)}</div>
+                )}
+              </div>
+            </details>
+          ))}
+        </div>
       </div>
     </details>
   )
@@ -65,7 +68,7 @@ function NftParseDetails({ nfts }: { nfts: NftCategory }) {
 function ElectrumVerificationBadge({ verification }: { verification: ElectrumVerification }) {
   if (verification.error) {
     return (
-      <div style={{ padding: '8px 12px', backgroundColor: '#f5f5f5', border: '1px solid #ccc', borderRadius: '6px', fontSize: '0.9em', color: '#666' }}>
+      <div className="note note-muted">
         Electrum verification unavailable: {verification.error}
       </div>
     )
@@ -73,15 +76,15 @@ function ElectrumVerificationBadge({ verification }: { verification: ElectrumVer
 
   if (verification.verified) {
     return (
-      <div style={{ padding: '8px 12px', backgroundColor: '#d4edda', border: '1px solid #28a745', borderRadius: '6px', fontSize: '0.9em', color: '#155724' }}>
-        chaingraph data verified with Electrum ({verification.totalElectrumUtxos.toLocaleString("en-GB")} UTXOs match)
+      <div className="note note-success">
+        Chaingraph data verified with Electrum ({verification.totalElectrumUtxos.toLocaleString("en-GB")} UTXOs match)
       </div>
     )
   }
 
   return (
-    <div style={{ padding: '8px 12px', backgroundColor: '#fff3cd', border: '1px solid #ffc107', borderRadius: '6px', fontSize: '0.9em', color: '#856404' }}>
-      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+    <div className="note note-warn">
+      <div style={{ fontWeight: 700, marginBottom: '4px' }}>
         Chaingraph data may be stale — Electrum could not confirm all UTXOs
       </div>
       <div>Chaingraph UTXOs: {verification.totalChaingraphUtxos.toLocaleString("en-GB")} — Electrum verified {verification.totalElectrumUtxos.toLocaleString("en-GB")} of those</div>
@@ -102,52 +105,21 @@ function UtxoEntry({ utxo, network, displayTokenAmount }: { utxo: ReservedSupply
   const result = lockingBytecodeToCashAddress({ bytecode: hexToBin(utxo.lockingBytecode), prefix: network === 'chipnet' ? 'bchtest' : 'bitcoincash' })
   const address = typeof result === 'string' ? undefined : result.address
   return (
-    <div style={{ marginBottom: '14px', paddingLeft: '8px', borderLeft: '2px solid #ccc', lineHeight: '1.6' }}>
-      <div>
-        {utxo.nftCapability && (
-          <span style={{
-            display: 'inline-block',
-            padding: '1px 6px',
-            fontSize: '0.85em',
-            borderRadius: '4px',
-            backgroundColor: utxo.nftCapability === 'minting' ? '#d4edda' : '#fff3cd',
-            color: utxo.nftCapability === 'minting' ? '#155724' : '#856404'
-          }}>
-            {utxo.nftCapability}
-          </span>
-        )}
-        {isCovenant && (
-          <span style={{
-            display: 'inline-block',
-            padding: '1px 6px',
-            fontSize: '0.85em',
-            borderRadius: '4px',
-            marginLeft: utxo.nftCapability ? '4px' : undefined,
-            backgroundColor: '#cce5ff',
-            color: '#004085'
-          }}>
-            covenant
-          </span>
-        )}
-        {isAuthhead && (
-          <span style={{
-            display: 'inline-block',
-            padding: '1px 6px',
-            fontSize: '0.85em',
-            borderRadius: '4px',
-            marginLeft: utxo.nftCapability || isCovenant ? '4px' : undefined,
-            backgroundColor: '#e2d9f3',
-            color: '#3d2b6b'
-          }}>
-            authhead
-          </span>
-        )}
-      </div>
+    <div className={styles.entry}>
+      {(utxo.nftCapability || isCovenant || isAuthhead) && (
+        <div className={styles.entryHead}>
+          {utxo.nftCapability && (
+            <Badge tone={utxo.nftCapability === 'minting' ? 'success' : 'warn'}>{utxo.nftCapability}</Badge>
+          )}
+          {isCovenant && <Badge tone="info">covenant</Badge>}
+          {isAuthhead && <Badge tone="purple">authhead</Badge>}
+        </div>
+      )}
       <div style={{ wordBreak: 'break-all' }}>
-        outpoint: {utxo.txHash}:{utxo.vout}
+        <span style={{ color: 'var(--text-muted)' }}>outpoint:</span> <span className="mono">{utxo.txHash}:{utxo.vout}</span>
       </div>
-      {address && <div style={{ wordBreak: 'break-all' }}>address: {address}</div>}
-      <div>FT amount: {displayTokenAmount(utxo.fungibleTokenAmount)}</div>
+      {address && <div style={{ wordBreak: 'break-all' }}><span style={{ color: 'var(--text-muted)' }}>address:</span> <span className="mono">{address}</span></div>}
+      <div><span style={{ color: 'var(--text-muted)' }}>FT amount:</span> {displayTokenAmount(utxo.fungibleTokenAmount)}</div>
     </div>
   )
 }
@@ -158,7 +130,7 @@ export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metada
   const nfts = metadataInfo?.tokenMetadata?.token?.nfts
 
   const displayTokenAmount = (amount: bigint) => {
-    if (decimals === 0) return amount.toLocaleString("en-GB") + ' ' + symbol
+    if (decimals === 0) return amount.toLocaleString("en-GB") + (symbol ? ' ' + symbol : '')
     const negative = amount < 0n
     const absAmount = negative ? -amount : amount
     const divisor = 10n ** BigInt(decimals)
@@ -167,201 +139,204 @@ export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metada
     const wholeStr = whole.toLocaleString("en-GB")
     const fractionalStr = fractional.toString().padStart(decimals, '0').replace(/0+$/, '')
     const sign = negative ? '-' : ''
-    if (fractionalStr === '') return `${sign}${wholeStr} ${symbol}`
-    return `${sign}${wholeStr}.${fractionalStr} ${symbol}`
+    if (fractionalStr === '') return `${sign}${wholeStr}${symbol ? ' ' + symbol : ''}`
+    return `${sign}${wholeStr}.${fractionalStr}${symbol ? ' ' + symbol : ''}`
   }
 
-  const toPercentage = (decimalNumber: number) => {
-    const pct = decimalNumber * 100
-    if (pct === 0 || pct === 100) return pct.toFixed(2)
-    if (pct < 0.01) return pct.toPrecision(2)
-    if (pct > 99.99) return (100 - Number((100 - pct).toPrecision(2))).toString()
-    return pct.toFixed(2)
-  }
+  const hasFT = tokenInfo.genesisSupplyFT > 0n
+  const showPrimarySupply = !tokenInfo.issuingUtxosError && !!metadataInfo?.tokenMetadata && hasFT
 
-  const getTokenType = () => {
-    if (tokenInfo.genesisSupplyFT && !tokenInfo.hasGenesisNFTs) return " Fungible Token"
-    if (!tokenInfo.genesisSupplyFT && tokenInfo.hasGenesisNFTs) return " NFTs"
-    if (tokenInfo.genesisSupplyFT && tokenInfo.hasGenesisNFTs) return " Both Fungible & Non-Fungible tokens"
-    return ""
-  }
+  // Resolve the Electrum-verified reserved / naive-circulating figures.
+  const supply = (() => {
+    if (!showPrimarySupply) return null
+    if (!electrumVerification) {
+      return { state: extendedInfo ? 'fetching-electrum' : 'loading' } as const
+    }
+    if (electrumVerification.error) {
+      if (!tokenInfo.reservedSupplyFT) return { state: 'none' } as const
+      return {
+        state: 'unverified' as const,
+        reservedFT: tokenInfo.reservedSupplyFT,
+        naiveCirculating: tokenInfo.genesisSupplyFT - tokenInfo.reservedSupplyFT
+      }
+    }
+    const reservedFT = electrumVerification.electrumReservedFT
+    if (!reservedFT) return { state: 'none' } as const
+    return {
+      state: 'verified' as const,
+      reservedFT,
+      naiveCirculating: tokenInfo.genesisSupplyFT - reservedFT,
+      exactMatch: electrumVerification.electrumReservedFT === tokenInfo.reservedSupplyFT
+    }
+  })()
+
+  // Chaingraph-derived burned & circulating-excl-burns figures.
+  const burned = extendedInfo ? tokenInfo.genesisSupplyFT - extendedInfo.totalSupplyFT : undefined
+  const circulatingExclBurns = extendedInfo ? extendedInfo.totalSupplyFT - tokenInfo.reservedSupplyFT : undefined
+
+  const reservedUtxos = tokenInfo.reservedSupplyUtxos.filter(utxo => utxo.isAuthhead || utxo.fungibleTokenAmount > 0n)
+  const covenantUtxos = reservedUtxos.filter(utxo => !utxo.isAuthhead && !utxo.lockingBytecode.startsWith('76a914'))
+  const p2pkhUtxos = reservedUtxos.filter(utxo => !utxo.isAuthhead && utxo.lockingBytecode.startsWith('76a914'))
+  const authheadUtxo = reservedUtxos.find(utxo => utxo.isAuthhead)
+  const reservedSummaryParts: string[] = []
+  if (covenantUtxos.length > 0) reservedSummaryParts.push(`${covenantUtxos.length} issuing covenant UTXO${covenantUtxos.length > 1 ? 's' : ''}`)
+  if (p2pkhUtxos.length > 0) reservedSummaryParts.push(`${p2pkhUtxos.length} P2PKH UTXO${p2pkhUtxos.length > 1 ? 's' : ''}`)
+  if (authheadUtxo) reservedSummaryParts.push('identity output')
+
+  const showElectrumChaingraphReserved = !tokenInfo.issuingUtxosError && !!extendedInfo && !!metadataInfo?.tokenMetadata && hasFT &&
+    !(!!electrumVerification && !electrumVerification.error && electrumVerification.electrumReservedFT === tokenInfo.reservedSupplyFT)
+
+  const mintingCount = tokenInfo.reservedSupplyUtxos.filter(utxo => utxo.nftCapability === 'minting').length
 
   return (
-    <>
-      token type: {getTokenType()}<br /><br />
+    <div className={`card ${styles.section}`}>
+      <SectionTitle>Supply</SectionTitle>
 
       {(tokenInfo.genesisInfoError || tokenInfo.issuingUtxosError) && (
-        <div style={{ padding: '8px 12px', backgroundColor: '#fff3cd', border: '1px solid #ffc107', borderRadius: '6px', fontSize: '0.9em', color: '#856404', marginBottom: '12px' }}>
+        <div className="note note-warn" style={{ marginBottom: '16px' }}>
           {tokenInfo.genesisInfoError && <div>{tokenInfo.genesisInfoError} — genesis supply and NFT presence can&apos;t be shown.</div>}
           {tokenInfo.issuingUtxosError && <div>{tokenInfo.issuingUtxosError} — reserved supply can&apos;t be shown.</div>}
         </div>
       )}
 
-      {nfts && Object.keys(nfts.parse.types).length > 0 && (
-        <><NftParseDetails nfts={nfts} /><br /></>
-      )}
-
-      {tokenInfo.genesisSupplyFT > 0n && (
-        <>
-          genesis supply: {displayTokenAmount(tokenInfo.genesisSupplyFT)} <br /><br />
-        </>
-      )}
-
-      {!tokenInfo.issuingUtxosError && metadataInfo?.tokenMetadata && tokenInfo.genesisSupplyFT > 0n && (() => {
-        // Burned + circulating excl. burns come from the Chaingraph holder query (extendedInfo).
-        // Rendered between naive circulating and reserved supply in both branches below.
-        const burnedAndExclJsx = extendedInfo ? (() => {
-          const burned = tokenInfo.genesisSupplyFT - extendedInfo.totalSupplyFT
-          const advancedCirculating = extendedInfo.totalSupplyFT - tokenInfo.reservedSupplyFT
-          return (
-            <>
-              {burned > 0n && <>burned: {displayTokenAmount(burned)}<br /></>}
-              circulating supply excl. burns: {displayTokenAmount(advancedCirculating)}<br /><br />
-            </>
-          )
-        })() : null
-
-        return (
-          <>
-          {/* Naive circulating supply: genesis - reserved (only shown with Electrum verification) */}
-          {(() => {
-            if (!electrumVerification) {
-              if (!extendedInfo) return <>loading supply data...<br /><br /></>
-              return <>fetching supply info from Electrum...<br /><br /></>
-            }
-            if (electrumVerification.error) {
-              return tokenInfo.reservedSupplyFT ? (
-                <>
-                  naive circulating supply: {displayTokenAmount(tokenInfo.genesisSupplyFT - tokenInfo.reservedSupplyFT)}
-                  <br /><br />
-                  {burnedAndExclJsx}
-                  reserved supply: {displayTokenAmount(tokenInfo.reservedSupplyFT)}
-                  <span style={{ fontSize: '0.85em', color: '#666' }}> (unverified)</span>
-                  <br /><br />
-                </>
-              ) : (
-                <>No reserved supply (full supply circulating)<br /><br /></>
-              )
-            }
-            const reservedFT = electrumVerification.electrumReservedFT
-            const naiveCirculating = tokenInfo.genesisSupplyFT - reservedFT
-
-            return reservedFT ? (
-              <>
-                naive circulating supply: {displayTokenAmount(naiveCirculating)}
-                <br /><br />
-                {burnedAndExclJsx}
-                reserved supply: {displayTokenAmount(reservedFT)}
-                <br /><br />
-                {(() => {
-                  const reservedUtxos = tokenInfo.reservedSupplyUtxos.filter(utxo => utxo.isAuthhead || utxo.fungibleTokenAmount > 0n)
-                  const covenantUtxos = reservedUtxos.filter(utxo => !utxo.isAuthhead && !utxo.lockingBytecode.startsWith('76a914'))
-                  const p2pkhUtxos = reservedUtxos.filter(utxo => !utxo.isAuthhead && utxo.lockingBytecode.startsWith('76a914'))
-                  const authheadUtxo = reservedUtxos.find(utxo => utxo.isAuthhead)
-                  const summaryParts: string[] = []
-                  if (covenantUtxos.length > 0) summaryParts.push(`${covenantUtxos.length} issuing covenant UTXO${covenantUtxos.length > 1 ? 's' : ''}`)
-                  if (p2pkhUtxos.length > 0) summaryParts.push(`${p2pkhUtxos.length} P2PKH UTXO${p2pkhUtxos.length > 1 ? 's' : ''}`)
-                  if (authheadUtxo) summaryParts.push('identity output')
-                  return (
-                    <details>
-                      <summary style={{ cursor: 'pointer' }}>reserved supply held on {summaryParts.join(' and ')}</summary>
-                      <div style={{ marginTop: '8px', marginLeft: '8px' }}>
-                        {reservedUtxos.map(utxo => (
-                          <UtxoEntry key={`${utxo.txHash}:${utxo.vout}`} utxo={utxo} network={tokenInfo.network} displayTokenAmount={displayTokenAmount} />
-                        ))}
-                      </div>
-                    </details>
-                  )
-                })()}
-                {electrumVerification.electrumReservedFT === tokenInfo.reservedSupplyFT ? (
-                  <div style={{ padding: '8px 12px', marginTop: '8px', backgroundColor: '#d4edda', border: '1px solid #28a745', borderRadius: '6px', fontSize: '0.9em', color: '#155724' }}>
-                    supply verified via Electrum
-                  </div>
-                ) : (
-                  <div style={{ padding: '8px 12px', marginTop: '8px', backgroundColor: '#e8f4fd', border: '1px solid #7ab8d9', borderRadius: '6px', fontSize: '0.9em', color: '#0c5460' }}>
-                    used Electrum to select the accurate UTXOs from Chaingraph (Chaingraph reported some stale reserves)
-                  </div>
-                )}
-                <br />
-              </>
-            ) : (
-              <>No reserved supply (full supply circulating)<br /><br /></>
-            )
-          })()}
-          </>
-        )
-      })()}
-
-      <hr />
-      <div style={{ marginTop: '10px' }}><strong>Detailed supply info</strong></div><br />
-
-      {extendedInfo && (
-        electrumVerification ? (
-          <><ElectrumVerificationBadge verification={electrumVerification} /><br /></>
-        ) : (
-          <>fetching supply info from Electrum...<br /><br /></>
-        )
-      )}
-
-      {!tokenInfo.issuingUtxosError && extendedInfo && metadataInfo?.tokenMetadata && tokenInfo.genesisSupplyFT > 0n && (() => {
-        // Hide Chaingraph reserved supply when Electrum confirms the same value — already shown above.
-        const electrumMatches = !!electrumVerification && !electrumVerification.error && electrumVerification.electrumReservedFT === tokenInfo.reservedSupplyFT
-        if (electrumMatches) return null
-        return (
-          <>reserved supply (Chaingraph): {displayTokenAmount(tokenInfo.reservedSupplyFT)}<br /><br /></>
-        )
-      })()}
-
-      {extendedInfo && extendedInfo.totalSupplyNFTs > 0 && (
-        <>
-          total amount NFTs: {extendedInfo.totalSupplyNFTs.toLocaleString("en-GB")}
-          {!tokenInfo.issuingUtxosError && (() => {
-            const mintingCount = tokenInfo.reservedSupplyUtxos.filter(utxo => utxo.nftCapability === 'minting').length
-            return mintingCount > 0 && (
-              <> (incl. {mintingCount} minting NFT{mintingCount > 1 ? 's' : ''})</>
-            )
-          })()}
-          <br /><br />
-          {!tokenInfo.issuingUtxosError && (
-            <>has active minting NFT: {tokenInfo.hasActiveMintingToken ? "yes" : "no"} <br /><br /></>
+      {/* Headline supply figures */}
+      {(hasFT || (extendedInfo && extendedInfo.totalSupplyNFTs > 0)) && (
+        <StatGrid>
+          {hasFT && (
+            <Stat label="Genesis supply" value={displayTokenAmount(tokenInfo.genesisSupplyFT)} />
           )}
-          {!tokenInfo.issuingUtxosError && tokenInfo.reservedSupplyUtxos.length > 0 && (
+
+          {supply?.state === 'verified' && (
             <>
-              <details>
-                <summary style={{ cursor: 'pointer' }}>display all minting + mutable NFT UTXOs ({tokenInfo.reservedSupplyUtxos.length})</summary>
-                <div style={{ marginTop: '8px', marginLeft: '8px' }}>
+              <Stat label="Circulating supply (naive)" value={displayTokenAmount(supply.naiveCirculating)} />
+              <Stat label="Reserved supply" value={displayTokenAmount(supply.reservedFT)} />
+            </>
+          )}
+          {supply?.state === 'unverified' && (
+            <>
+              <Stat label="Circulating supply (naive)" value={displayTokenAmount(supply.naiveCirculating)} />
+              <Stat label="Reserved supply" value={displayTokenAmount(supply.reservedFT)} sub="(unverified)" />
+            </>
+          )}
+          {(supply?.state === 'loading' || supply?.state === 'fetching-electrum') && (
+            <Stat label="Circulating supply" value={<span style={{ color: 'var(--text-muted)', fontWeight: 500, fontSize: '0.9rem' }}>{supply.state === 'loading' ? 'loading…' : 'verifying via Electrum…'}</span>} />
+          )}
+
+          {burned !== undefined && burned > 0n && (
+            <Stat label="Burned" value={displayTokenAmount(burned)} />
+          )}
+          {circulatingExclBurns !== undefined && hasFT && (
+            <Stat label="Circulating (excl. burns)" value={displayTokenAmount(circulatingExclBurns)} />
+          )}
+
+          {extendedInfo && extendedInfo.totalSupplyNFTs > 0 && (
+            <Stat
+              label="Total NFTs"
+              value={extendedInfo.totalSupplyNFTs.toLocaleString("en-GB")}
+              sub={!tokenInfo.issuingUtxosError && mintingCount > 0 ? `incl. ${mintingCount} minting` : undefined}
+            />
+          )}
+        </StatGrid>
+      )}
+
+      {/* Verification note for the primary supply figures */}
+      {supply?.state === 'verified' && (
+        <div style={{ marginTop: '14px' }}>
+          {supply.exactMatch ? (
+            <div className="note note-success">Supply verified via Electrum.</div>
+          ) : (
+            <div className="note note-info">Used Electrum to select the accurate UTXOs from Chaingraph (Chaingraph reported some stale reserves).</div>
+          )}
+        </div>
+      )}
+      {supply?.state === 'none' && (
+        <div className="note note-success" style={{ marginTop: '14px' }}>No reserved supply — the full supply is circulating.</div>
+      )}
+
+      {/* Reserved-supply UTXO breakdown */}
+      {(supply?.state === 'verified' || supply?.state === 'unverified') && reservedSummaryParts.length > 0 && (
+        <details className="disclosure" style={{ marginTop: '14px' }}>
+          <summary>Reserved supply held on {reservedSummaryParts.join(' and ')}</summary>
+          <div className="disclosure-body">
+            <div style={{ marginTop: '10px' }}>
+              {reservedUtxos.map(utxo => (
+                <UtxoEntry key={`${utxo.txHash}:${utxo.vout}`} utxo={utxo} network={tokenInfo.network} displayTokenAmount={displayTokenAmount} />
+              ))}
+            </div>
+          </div>
+        </details>
+      )}
+
+      {/* NFT parse metadata */}
+      {nfts && Object.keys(nfts.parse.types).length > 0 && (
+        <div style={{ marginTop: '14px' }}>
+          <NftParseDetails nfts={nfts} />
+        </div>
+      )}
+
+      {/* NFT minting state + all minting/mutable UTXOs */}
+      {extendedInfo && extendedInfo.totalSupplyNFTs > 0 && !tokenInfo.issuingUtxosError && (
+        <div style={{ marginTop: '14px' }}>
+          <Rows>
+            <Row label="Has active minting NFT">{tokenInfo.hasActiveMintingToken ? 'yes' : 'no'}</Row>
+          </Rows>
+          {tokenInfo.reservedSupplyUtxos.length > 0 && (
+            <details className="disclosure" style={{ marginTop: '14px' }}>
+              <summary>Minting &amp; mutable NFT UTXOs ({tokenInfo.reservedSupplyUtxos.length})</summary>
+              <div className="disclosure-body">
+                <div style={{ marginTop: '10px' }}>
                   {tokenInfo.reservedSupplyUtxos.map(utxo => (
                     <UtxoEntry key={`${utxo.txHash}:${utxo.vout}`} utxo={utxo} network={tokenInfo.network} displayTokenAmount={displayTokenAmount} />
                   ))}
                 </div>
-              </details>
-              <br />
-            </>
+              </div>
+            </details>
           )}
-        </>
+        </div>
       )}
 
-      {metadataInfo?.httpsUrl && (
+      {/* Detailed supply + holders */}
+      {(metadataInfo?.httpsUrl || extendedInfo || showElectrumChaingraphReserved) && (
         <>
-          {extendedInfo ? (
-            <>
-              number of user-addresses holding {symbol || 'the token'}: {extendedInfo.numberHolders.toLocaleString("en-GB")}<br /><br />
-              number of smart contract addresses holding {symbol || 'the token'}: {(extendedInfo.numberTokenAddresses - extendedInfo.numberHolders).toLocaleString("en-GB")}<br /><br />
-              total number of addresses holding {symbol || 'the token'}: {extendedInfo.numberTokenAddresses.toLocaleString("en-GB")}<br /><br />
-              {tokenInfo.genesisSupplyFT > 0n && extendedInfo.userSupplyFT > 0n && (
-                <>circulating supply held on user addresses: {displayTokenAmount(extendedInfo.userSupplyFT)}<br /><br /></>
+          <div className={styles.sectionTitle} style={{ marginTop: '24px' }}>Holders &amp; detailed supply</div>
+
+          {extendedInfo && (
+            <div style={{ marginBottom: '14px' }}>
+              {electrumVerification ? (
+                <ElectrumVerificationBadge verification={electrumVerification} />
+              ) : (
+                <div className="note note-muted">Fetching supply info from Electrum…</div>
               )}
-              {tokenInfo.genesisSupplyFT > 0n && extendedInfo.contractSupplyFT > 0n && (
-                <>circulating supply held on smart contracts: {displayTokenAmount(extendedInfo.contractSupplyFT)}<br /><br /></>
-              )}
-            </>
-          ) : extendedInfoError ? (
-            <><span style={{ color: '#b33' }}>{extendedInfoError}</span><br /><br /></>
-          ) : (
-            <>loading holder data...<br /><br /></>
+            </div>
+          )}
+
+          {showElectrumChaingraphReserved && (
+            <Rows>
+              <Row label="Reserved supply (Chaingraph)">{displayTokenAmount(tokenInfo.reservedSupplyFT)}</Row>
+            </Rows>
+          )}
+
+          {metadataInfo?.httpsUrl && (
+            extendedInfo ? (
+              <StatGrid>
+                <Stat label={`User addresses holding ${symbol || 'token'}`} value={extendedInfo.numberHolders.toLocaleString("en-GB")} />
+                <Stat label="Smart-contract addresses" value={(extendedInfo.numberTokenAddresses - extendedInfo.numberHolders).toLocaleString("en-GB")} />
+                <Stat label="Total holding addresses" value={extendedInfo.numberTokenAddresses.toLocaleString("en-GB")} />
+                {hasFT && extendedInfo.userSupplyFT > 0n && (
+                  <Stat label="Circulating on user addresses" value={displayTokenAmount(extendedInfo.userSupplyFT)} />
+                )}
+                {hasFT && extendedInfo.contractSupplyFT > 0n && (
+                  <Stat label="Circulating on smart contracts" value={displayTokenAmount(extendedInfo.contractSupplyFT)} />
+                )}
+              </StatGrid>
+            ) : extendedInfoError ? (
+              <div className="note note-danger">{extendedInfoError}</div>
+            ) : (
+              <div className="note note-muted">Loading holder data…</div>
+            )
           )}
         </>
       )}
-    </>
+    </div>
   )
 }

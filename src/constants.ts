@@ -8,3 +8,10 @@ export const BLOCK_EXPLORER_URL = "https://explorer.bch.ninja/tx/";
 export const OTR_REGISTRY_URL = "https://otr.cash/.well-known/bitcoin-cash-metadata-registry.json";
 export const ELECTRUM_MAINNET = "electrum.imaginary.cash";
 export const ELECTRUM_CHIPNET = "chipnet.bch.ninja";
+
+// Sample tokens shown on the landing screen before the first search.
+export const EXAMPLE_TOKENS = [
+  { name: "DogeCash", id: "8473d94f604de351cdee3030f6c354d36b257861ad8e95bbc0a06fbab2a2f9cf" },
+  { name: "ParyonUSD", id: "2469acc5afa4b10cb5b5c04afb89c3a3ffd61c5da9c01e26d00951cae2a02544" },
+  { name: "Furu Token", id: "d9ab24ed15a7846cc3d9e004aa5cb976860f13dac1ead05784ee4f4622af96ea" },
+];
