@@ -7,7 +7,7 @@ export default function Document() {
       <body>
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light'){document.documentElement.dataset.theme=t;}}catch(e){}`,
+            __html: `try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light'){document.documentElement.dataset.theme=t;}}catch(e){}try{if(new URLSearchParams(location.search).get('tokenId')){document.documentElement.setAttribute('data-has-token','');}}catch(e){}`,
           }}
         />
         <Main />

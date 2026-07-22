@@ -27,6 +27,9 @@ export default function Home() {
     const url = new URL(window.location.href)
     const params = new URLSearchParams(url.search)
     const readTokenId = params.get("tokenId")
+    // The pre-paint script (see _document) sets data-has-token so the hero renders
+    // compact before first paint; React now owns the UI, so clear it.
+    document.documentElement.removeAttribute("data-has-token")
     if (!readTokenId) return
     searchToken(readTokenId)
   }, [])
@@ -575,7 +578,7 @@ export default function Home() {
       </Head>
       <main className={styles.page}>
         <ThemeToggle />
-        <header className={`${styles.hero} ${compact ? styles.heroCompact : ''}`}>
+        <header className={`${styles.hero} app-hero ${compact ? styles.heroCompact : ''}`}>
           <button
             type="button"
             className={styles.brand}
@@ -583,10 +586,10 @@ export default function Home() {
             aria-label="Back to home"
           >
             <span className={styles.brandMark}>₿</span>
-            <h1 className={`${styles.title} ${compact ? styles.titleCompact : ''}`}>CashToken Explorer</h1>
+            <h1 className={`${styles.title} app-title ${compact ? styles.titleCompact : ''}`}>CashToken Explorer</h1>
           </button>
           {!compact && (
-            <p className={styles.subtitle}>
+            <p className={`${styles.subtitle} app-landing-only`}>
               Explore CashTokens metadata, supply, holders and authchain on Bitcoin Cash.
             </p>
           )}
@@ -599,10 +602,10 @@ export default function Home() {
           />
           {!compact && (
             <>
-              <div className={styles.searchHint}>
+              <div className={`${styles.searchHint} app-landing-only`}>
                 Paste a Token ID (Category ID) to look it up — or try an example below.
               </div>
-              <div className={styles.examples}>
+              <div className={`${styles.examples} app-landing-only`}>
                 <div className={styles.examplesLabel}>Example tokens</div>
                 <div className={styles.exampleList}>
                   {EXAMPLE_TOKENS.map(example => (
