@@ -9,6 +9,7 @@ interface SupplyStatsProps {
   extendedInfoError: string | undefined
   metadataInfo: MetadataInfo | undefined
   electrumVerification?: ElectrumVerification
+  electrumEnabled: boolean
 }
 
 function NftParseDetails({ nfts }: { nfts: NftCategory }) {
@@ -124,7 +125,7 @@ function UtxoEntry({ utxo, network, displayTokenAmount }: { utxo: ReservedSupply
   )
 }
 
-export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metadataInfo, electrumVerification }: SupplyStatsProps) {
+export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metadataInfo, electrumVerification, electrumEnabled }: SupplyStatsProps) {
   const decimals = metadataInfo?.tokenMetadata?.token?.decimals ?? 0
   const symbol = metadataInfo?.tokenMetadata?.token?.symbol ?? ''
   const nfts = metadataInfo?.tokenMetadata?.token?.nfts
@@ -150,6 +151,14 @@ export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metada
   const supply = (() => {
     if (!showPrimarySupply) return null
     if (!electrumVerification) {
+      if (!electrumEnabled) {
+        if (!tokenInfo.reservedSupplyFT) return { state: 'none' } as const
+        return {
+          state: 'chaingraph' as const,
+          reservedFT: tokenInfo.reservedSupplyFT,
+          naiveCirculating: tokenInfo.genesisSupplyFT - tokenInfo.reservedSupplyFT
+        }
+      }
       return { state: extendedInfo ? 'fetching-electrum' : 'loading' } as const
     }
     if (electrumVerification.error) {
@@ -183,7 +192,10 @@ export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metada
   if (p2pkhUtxos.length > 0) reservedSummaryParts.push(`${p2pkhUtxos.length} P2PKH UTXO${p2pkhUtxos.length > 1 ? 's' : ''}`)
   if (authheadUtxo) reservedSummaryParts.push('identity output')
 
+  // Only relevant as a comparison against Electrum figures — when verification is off,
+  // the headline "Reserved supply" already shows the same Chaingraph number.
   const showElectrumChaingraphReserved = !tokenInfo.issuingUtxosError && !!extendedInfo && !!metadataInfo?.tokenMetadata && hasFT &&
+    (electrumEnabled || !!electrumVerification) &&
     !(!!electrumVerification && !electrumVerification.error && electrumVerification.electrumReservedFT === tokenInfo.reservedSupplyFT)
 
   const mintingCount = tokenInfo.reservedSupplyUtxos.filter(utxo => utxo.nftCapability === 'minting').length
@@ -212,10 +224,10 @@ export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metada
               <Stat label="Reserved supply" value={displayTokenAmount(supply.reservedFT)} />
             </>
           )}
-          {supply?.state === 'unverified' && (
+          {(supply?.state === 'unverified' || supply?.state === 'chaingraph') && (
             <>
               <Stat label="Circulating supply (naive)" value={displayTokenAmount(supply.naiveCirculating)} />
-              <Stat label="Reserved supply" value={displayTokenAmount(supply.reservedFT)} sub="(unverified)" />
+              <Stat label="Reserved supply" value={displayTokenAmount(supply.reservedFT)} sub={supply.state === 'unverified' ? '(unverified)' : undefined} />
             </>
           )}
           {(supply?.state === 'loading' || supply?.state === 'fetching-electrum') && (
@@ -254,7 +266,7 @@ export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metada
       )}
 
       {/* Reserved-supply UTXO breakdown */}
-      {(supply?.state === 'verified' || supply?.state === 'unverified') && reservedSummaryParts.length > 0 && (
+      {(supply?.state === 'verified' || supply?.state === 'unverified' || supply?.state === 'chaingraph') && reservedSummaryParts.length > 0 && (
         <details className="disclosure" style={{ marginTop: '14px' }}>
           <summary>Reserved supply held on {reservedSummaryParts.join(' and ')}</summary>
           <div className="disclosure-body">
@@ -300,7 +312,7 @@ export function SupplyStats({ tokenInfo, extendedInfo, extendedInfoError, metada
         <>
           <div className={styles.sectionTitle} style={{ marginTop: '24px' }}>Holders &amp; detailed supply</div>
 
-          {extendedInfo && (
+          {extendedInfo && (electrumEnabled || electrumVerification) && (
             <div style={{ marginBottom: '14px' }}>
               {electrumVerification ? (
                 <ElectrumVerificationBadge verification={electrumVerification} />

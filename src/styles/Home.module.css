@@ -480,3 +480,16 @@
   font-size: 0.88rem;
   color: var(--text-muted);
 }
+
+.footerToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+.footerToggle input {
+  accent-color: var(--accent);
+  cursor: pointer;
+  margin: 0;
+}

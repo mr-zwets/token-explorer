@@ -22,6 +22,19 @@ export default function Home() {
   const [metadataInfo, setMetadataInfo] = useState<MetadataInfo>()
   const [tokenIconUri, setTokenIconUri] = useState<string>("")
   const [electrumVerification, setElectrumVerification] = useState<ElectrumVerification>()
+  const [verifyElectrum, setVerifyElectrum] = useState<boolean>(false)
+
+  // Mirrors verifyElectrum for async code (Phase 3 runs long after the closure was created)
+  const verifyElectrumRef = useRef(false)
+  // Phase-3 arguments, kept so enabling the toggle mid-view can still verify the loaded token
+  const electrumArgsRef = useRef<Parameters<typeof verifySupplyViaElectrum> | null>(null)
+  const electrumInFlightRef = useRef(false)
+
+  useEffect(() => {
+    const stored = localStorage.getItem('verifyElectrum') === 'true'
+    setVerifyElectrum(stored)
+    verifyElectrumRef.current = stored
+  }, [])
 
   useEffect(() => {
     const url = new URL(window.location.href)
@@ -64,6 +77,7 @@ export default function Home() {
     setMetadataInfo(undefined)
     setTokenIconUri("")
     setElectrumVerification(undefined)
+    electrumArgsRef.current = null
     setIsLoadingTokenInfo(true)
     const metadataReadyPromise = new Promise<void>(resolve => {
       metadataReadyRef.current = { resolve }
@@ -85,8 +99,46 @@ export default function Home() {
     setMetadataInfo(undefined)
     setTokenIconUri("")
     setElectrumVerification(undefined)
+    electrumArgsRef.current = null
     setIsLoadingTokenInfo(false)
     window.history.replaceState({}, "", location.pathname)
+  }
+
+  function runElectrumVerification() {
+    const args = electrumArgsRef.current
+    if (!args || electrumInFlightRef.current) return
+    electrumInFlightRef.current = true
+    verifySupplyViaElectrum(...args).then(
+      result => {
+        if (verifyElectrumRef.current) setElectrumVerification(result)
+      },
+      error => {
+        console.error("Electrum verification failed:", error)
+        if (!verifyElectrumRef.current) return
+        setElectrumVerification({
+          verified: false,
+          totalChaingraphUtxos: args[0].length,
+          totalElectrumUtxos: 0,
+          staleCount: 0,
+          missingCount: 0,
+          chaingraphTotalFT: 0n,
+          electrumTotalFT: 0n,
+          electrumReservedFT: 0n,
+          error: error instanceof Error ? error.message : String(error),
+        })
+      }
+    ).finally(() => { electrumInFlightRef.current = false })
+  }
+
+  function toggleVerifyElectrum(enabled: boolean) {
+    setVerifyElectrum(enabled)
+    verifyElectrumRef.current = enabled
+    localStorage.setItem('verifyElectrum', String(enabled))
+    if (enabled) {
+      if (!electrumVerification) runElectrumVerification()
+    } else {
+      setElectrumVerification(undefined)
+    }
   }
 
   async function checkOtrStatus(tokenId: string) {
@@ -530,26 +582,11 @@ export default function Home() {
         contractSupplyFT,
       })
 
-      // Phase 3: Verify supply via Electrum (background, non-blocking)
+      // Phase 3: Verify supply via Electrum (opt-in via footer toggle, background, non-blocking)
       // Don't pass authHead for Electrum check if the authhead is burned (OP_RETURN identity output)
       const authHeadForElectrum = (authHead && !authHeadBurned) ? { txHash: authHead, vout: authHeadVout, address: authHeadAddress } : undefined
-      verifySupplyViaElectrum(allTokenOutputs, tokenId, network, authHeadForElectrum).then(
-        result => setElectrumVerification(result),
-        error => {
-          console.error("Electrum verification failed:", error)
-          setElectrumVerification({
-            verified: false,
-            totalChaingraphUtxos: allTokenOutputs.length,
-            totalElectrumUtxos: 0,
-            staleCount: 0,
-            missingCount: 0,
-            chaingraphTotalFT: 0n,
-            electrumTotalFT: 0n,
-            electrumReservedFT: 0n,
-            error: error instanceof Error ? error.message : String(error),
-          })
-        }
-      )
+      electrumArgsRef.current = [allTokenOutputs, tokenId, network, authHeadForElectrum]
+      if (verifyElectrumRef.current) runElectrumVerification()
     } catch (error) {
       console.error("Error in queryAllTokenHolders:", error)
       setExtendedTokenInfoError("Failed to load holder & supply data")
@@ -679,6 +716,7 @@ export default function Home() {
                 extendedInfoError={extendedTokenInfoError}
                 metadataInfo={metadataInfo}
                 electrumVerification={electrumVerification}
+                electrumEnabled={verifyElectrum}
               />
               <AuthchainInfo
                 tokenInfo={tokenInfo}
@@ -709,6 +747,14 @@ export default function Home() {
                 /tokens endpoint
               </a>
             </span>
+            <label className={styles.footerToggle} title="Cross-check Chaingraph UTXO data against an Electrum server. Useful for debugging or when using a Chaingraph instance that may serve stale data.">
+              <input
+                type="checkbox"
+                checked={verifyElectrum}
+                onChange={event => toggleVerifyElectrum(event.target.checked)}
+              />
+              verify supply via Electrum
+            </label>
           </div>
         )}
       </main>

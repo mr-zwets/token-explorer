@@ -78,15 +78,17 @@ When verification fails or metadata can't be fetched, `fetchMetadata()` populate
 
 There are two supply calculations displayed in the UI:
 
-**Primary (Electrum-verified):** Circulating supply = genesis supply − reserved supply. Reserved supply is calculated from Electrum-verified UTXOs (minting/mutable NFT outputs + authhead identity output FT). This is shown at the top and is reliable because it uses Electrum to confirm which Chaingraph UTXOs are actually unspent. See `src/utils/queryElectrum.ts`.
+**Primary:** Circulating supply = genesis supply − reserved supply. Reserved supply comes from Chaingraph (minting/mutable NFT outputs + authhead identity output FT) and is shown at the top immediately. When the opt-in Electrum verification is enabled, the section instead waits for Electrum and shows Electrum-verified figures. See `src/utils/queryElectrum.ts`.
 
 **Advanced (Chaingraph-only):** Circulating supply excl. burns = totalSupplyFT − reservedSupplyFT. This uses `queryAllTokenHolders` (paginated, 5000 per page) to sum all unspent token outputs. Shown in the "Advanced ChainGraph Info" section. This method is less reliable when Chaingraph has stale data but can detect burns (genesis > current total).
 
-### Electrum Verification
+### Electrum Verification (opt-in)
 
-The Chaingraph instance (`gql.chaingraph.pat.mn`) can serve stale UTXO data — reporting spent UTXOs as still unspent. To detect and correct this, the app cross-verifies token UTXOs via Electrum Cash servers which talk to full nodes directly. See `src/utils/queryElectrum.ts`.
+Some Chaingraph instances can serve stale UTXO data — reporting spent UTXOs as still unspent. To detect and correct this, the app can cross-verify token UTXOs via Electrum Cash servers which talk to full nodes directly. See `src/utils/queryElectrum.ts`.
 
-**Flow:**
+**Toggle:** Electrum verification is **off by default** (the default Chaingraph instance is stable; verification slows down loading). It's enabled via a "verify supply via Electrum" checkbox in the footer, persisted in localStorage under the key `verifyElectrum`. It remains valuable as a debugging tool and for users pointing the app at their own Chaingraph instance. Implementation in `src/pages/index.tsx`: Phase 3 stores its arguments in `electrumArgsRef` and only runs when the toggle is on; ticking the checkbox while a token is loaded runs verification retroactively for that token, and unticking clears the Electrum results.
+
+**Flow (when enabled):**
 1. After `queryAllTokenHolders` completes (Phase 2), collect all unique locking bytecodes from the results
 2. Convert each to a CashAddress via `lockingBytecodeToCashAddress` (libauth)
 3. Connect to Electrum server (mainnet: `electrum.imaginary.cash`, chipnet: `chipnet.bch.ninja`) with `disableBrowserVisibilityHandling: true` to prevent disconnects when the tab loses focus
@@ -96,7 +98,8 @@ The Chaingraph instance (`gql.chaingraph.pat.mn`) can serve stale UTXO data — 
 7. Also verify the authhead UTXO is unspent — shown as a badge in AuthchainInfo
 
 **UI display:**
-- Supply section waits for Electrum before showing circulating/reserved (to avoid flashing wrong numbers from stale Chaingraph data)
+- With verification disabled, the supply section shows Chaingraph figures immediately (no waiting, no verification badges)
+- With verification enabled, the supply section waits for Electrum before showing circulating/reserved (to avoid flashing wrong numbers from stale Chaingraph data)
 - Green badge: "supply verified via Electrum" when Chaingraph and Electrum reserves match
 - Blue badge: "used Electrum to select the accurate UTXOs from Chaingraph" when they differ
 - Yellow warning in Advanced section when Chaingraph UTXOs don't match Electrum
