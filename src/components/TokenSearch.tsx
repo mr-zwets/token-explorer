@@ -1,4 +1,5 @@
 import styles from '@/styles/Home.module.css'
+import { sanitizeTokenId } from '@/utils/utils'
 
 interface TokenSearchProps {
   tokenId: string
@@ -16,7 +17,7 @@ export function TokenSearch({
   onSearch
 }: TokenSearchProps) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newTokenId = e.target.value
+    const newTokenId = sanitizeTokenId(e.target.value)
     onTokenIdChange(newTokenId)
 
     const url = new URL(window.location.href)

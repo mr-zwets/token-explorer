@@ -1,3 +1,12 @@
+// Pasted tokenIds often carry surrounding whitespace/newlines (or an "0x" prefix
+// copied from a block explorer), which would end up in the query and the URL.
+export function sanitizeTokenId(input: string){
+  const stripped = input.replace(/\s+/g, '');
+  const withoutPrefix = /^0x[0-9a-fA-F]+$/.test(stripped) ? stripped.slice(2) : stripped;
+  // Leave anything that isn't plain hex untouched so the user sees what they entered
+  return /^[0-9a-fA-F]+$/.test(withoutPrefix) ? withoutPrefix.toLowerCase() : withoutPrefix;
+}
+
 export function formatTimestamp(unixTimestampNumber: number){
   const date = new Date(unixTimestampNumber * 1000);
   const year = date.getUTCFullYear();

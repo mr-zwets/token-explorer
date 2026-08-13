@@ -6,6 +6,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { queryGenesisInfo, queryIssuingUtxos, queryAuthchain, queryAllTokenHolders, queryGenesisCategories } from '../utils/queryChainGraph'
 import { countUniqueHolders, calculateTotalSupplyFT } from '../utils/calculations'
 import { checkOtrVerified } from '../utils/otrRegistry'
+import { sanitizeTokenId } from '../utils/utils'
 import { IdentitySnapshotSchema } from '../utils/bcmrSchema'
 import type { TokenInfo, ExtendedTokenInfo, MetadataInfo, TokenMetadata, AuthchainEntry, Diagnostic, ReservedSupplyUtxo, ElectrumVerification } from '@/interfaces'
 import { CHAINGRAPH_URL, IPFS_GATEWAY, EXAMPLE_TOKENS } from '@/constants'
@@ -39,7 +40,7 @@ export default function Home() {
   useEffect(() => {
     const url = new URL(window.location.href)
     const params = new URLSearchParams(url.search)
-    const readTokenId = params.get("tokenId")
+    const readTokenId = sanitizeTokenId(params.get("tokenId") ?? "")
     // The pre-paint script (see _document) sets data-has-token so the hero renders
     // compact before first paint; React now owns the UI, so clear it.
     document.documentElement.removeAttribute("data-has-token")
@@ -68,7 +69,8 @@ export default function Home() {
   // Resolves when metadata has been set, so lookUpTokenData can wait briefly for it
   const metadataReadyRef = useRef<{ resolve: () => void } | null>(null)
 
-  function searchToken(id: string) {
+  function searchToken(rawId: string) {
+    const id = sanitizeTokenId(rawId)
     setTokenId(id)
     setTokenInfo(undefined)
     setTokenInfoError(undefined)
